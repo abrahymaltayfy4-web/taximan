@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "847283164423-t5jp0el2vckepluin99j7gh1kjddcc45.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.taxicaptain.taxi_captain_manual",
+            "certificate_hash": "ef0c2f460c2bc0fb1f73019fcc5b7acda216cec9"
+          }
+        },
+        {
           "client_id": "847283164423-thhs401qs1hq093lh1dmedc2gd2udfgf.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -31,10 +39,10 @@
               "client_type": 3
             },
             {
-              "client_id": "847283164423-7f5v95vhn1o1qi97u5oc3ss0d4ma5mj1.apps.googleusercontent.com",
+              "client_id": "847283164423-2bnh54c31m4pgrbcbiq84s971f1ssorv.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.taxicaptain.taxiCaptainManual"
+                "bundle_id": "com.taxiclient.taxiClientManual"
               }
             }
           ]
@@ -67,10 +75,10 @@
               "client_type": 3
             },
             {
-              "client_id": "847283164423-7f5v95vhn1o1qi97u5oc3ss0d4ma5mj1.apps.googleusercontent.com",
+              "client_id": "847283164423-2bnh54c31m4pgrbcbiq84s971f1ssorv.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.taxicaptain.taxiCaptainManual"
+                "bundle_id": "com.taxiclient.taxiClientManual"
               }
             }
           ]

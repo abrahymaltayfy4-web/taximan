@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "847283164423-t5jp0el2vckepluin99j7gh1kjddcc45.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.taxicaptain.taxi_captain_manual",
+            "certificate_hash": "ef0c2f460c2bc0fb1f73019fcc5b7acda216cec9"
+          }
+        },
+        {
           "client_id": "847283164423-thhs401qs1hq093lh1dmedc2gd2udfgf.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +37,49 @@
             {
               "client_id": "847283164423-thhs401qs1hq093lh1dmedc2gd2udfgf.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "847283164423-2bnh54c31m4pgrbcbiq84s971f1ssorv.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.taxiclient.taxiClientManual"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:847283164423:android:1386f93947b74e8a3221a2",
+        "android_client_info": {
+          "package_name": "com.taxiclient.taxi_client_manual"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "847283164423-thhs401qs1hq093lh1dmedc2gd2udfgf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpMaqeIcnpkuREaBaaVIhFS0Cnfn6P_Qo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "847283164423-thhs401qs1hq093lh1dmedc2gd2udfgf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "847283164423-2bnh54c31m4pgrbcbiq84s971f1ssorv.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.taxiclient.taxiClientManual"
+              }
             }
           ]
         }
