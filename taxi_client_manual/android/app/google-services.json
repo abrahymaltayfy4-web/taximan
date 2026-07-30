@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "847283164423",
+    "project_id": "taximanual",
+    "storage_bucket": "taximanual.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:847283164423:android:f6a284b476433ae83221a2",
+        "android_client_info": {
+          "package_name": "com.taxicaptain.taxi_captain_manual"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "847283164423-thhs401qs1hq093lh1dmedc2gd2udfgf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpMaqeIcnpkuREaBaaVIhFS0Cnfn6P_Qo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "847283164423-thhs401qs1hq093lh1dmedc2gd2udfgf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "847283164423-7f5v95vhn1o1qi97u5oc3ss0d4ma5mj1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.taxicaptain.taxiCaptainManual"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:847283164423:android:1386f93947b74e8a3221a2",
+        "android_client_info": {
+          "package_name": "com.taxiclient.taxi_client_manual"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "847283164423-thhs401qs1hq093lh1dmedc2gd2udfgf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpMaqeIcnpkuREaBaaVIhFS0Cnfn6P_Qo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "847283164423-thhs401qs1hq093lh1dmedc2gd2udfgf.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "847283164423-7f5v95vhn1o1qi97u5oc3ss0d4ma5mj1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.taxicaptain.taxiCaptainManual"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
