@@ -1,13 +1,15 @@
 // lib/main.dart
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'theme/app_theme.dart';
 import 'features/auth/views/login_view.dart';
 
-void main() {
+void main() async {
   // Ensure Flutter bindings are initialized
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
 
   // Set preferred orientations to portrait mode only
   SystemChrome.setPreferredOrientations([
@@ -35,7 +37,10 @@ class RahalCustomerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     // Initialize ScreenUtil for responsive design across all screen sizes
     return ScreenUtilInit(
-      designSize: const Size(375, 812), // Standard mobile design viewport (iPhone 11/12/13/14 reference)
+      designSize: const Size(
+        375,
+        812,
+      ), // Standard mobile design viewport (iPhone 11/12/13/14 reference)
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
