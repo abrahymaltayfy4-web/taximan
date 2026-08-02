@@ -1,9 +1,11 @@
 // lib/features/driver_home/cubit/driver_home_cubit.dart
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../repositories/driver_repository.dart';
+import '../../../core/services/location_service.dart';
 
-// States
 abstract class DriverHomeState extends Equatable {
   const DriverHomeState();
   @override
@@ -24,33 +26,47 @@ class DriverLocationError extends DriverHomeState {
   List<Object?> get props => [message];
 }
 
-// Cubit
 class DriverHomeCubit extends Cubit<DriverHomeState> {
   final DriverRepository _driverRepository;
+  StreamSubscription<Position>? _locationSubscription;
 
   DriverHomeCubit(this._driverRepository) : super(DriverHomeInitial());
 
-  // Toggle driver online / offline status
   Future<void> toggleDriverStatus(String driverId, bool isOnline) async {
     try {
-      final status = isOnline ? 'online' : 'offline';
-      // Here we update status in Firestore via repository if needed
+      if (isOnline) {
+        final hasPermission = await LocationService.handleLocationPermission();
+        if (!hasPermission) {
+          // تم إزالة كلمة const من هنا لتصحيح الخطأ
+          emit(DriverLocationError('صلاحية الموقع مرفوضة، لا يمكن الاتصال بالخدمة'));
+          return;
+        }
+
+        _startLocationTracking(driverId);
+      } else {
+        _locationSubscription?.cancel();
+      }
+
       emit(DriverStatusUpdated(isOnline));
     } catch (e) {
       emit(DriverLocationError(e.toString()));
     }
   }
 
-  // Update live GPS coordinates
-  Future<void> updateLocation(String driverId, double lat, double lng) async {
-    try {
-      await _driverRepository.updateLocation(
+  void _startLocationTracking(String driverId) {
+    _locationSubscription?.cancel();
+    _locationSubscription = LocationService.getPositionStream().listen((Position position) {
+      _driverRepository.updateLocation(
         driverId: driverId,
-        latitude: lat,
-        longitude: lng,
+        latitude: position.latitude,
+        longitude: position.longitude,
       );
-    } catch (e) {
-      // Handle location update error silently or log it
-    }
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _locationSubscription?.cancel();
+    return super.close();
   }
 }
