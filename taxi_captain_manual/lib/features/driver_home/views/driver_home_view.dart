@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../cubit/driver_home_cubit.dart';
 import '../../../repositories/driver_repository.dart';
 import '../../../core/services/firestore_service.dart';
+import 'available_rides_view.dart'; // تأكد من مطابقة مسار ملف AvailableRidesView
 
 class DriverHomeView extends StatelessWidget {
   const DriverHomeView({Key? key}) : super(key: key);
@@ -81,39 +82,59 @@ class _DriverHomeBodyState extends State<_DriverHomeBody> {
                         onPressed: () {},
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                    Row(
+                      children: [
+                        // زر الانتقال إلى صفحة عرض الطلبات المتاحة بجانب الشريط العلوي
+                        CircleAvatar(
+                          backgroundColor: Colors.white,
+                          child: IconButton(
+                            icon: const Icon(Icons.local_taxi, color: Colors.blue),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => AvailableRidesView(),
+                                ),
+                              );
+                            },
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: _isOnline ? Colors.green : Colors.red,
-                            ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _isOnline ? 'متصل الآن' : 'غير متصل',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: _isOnline ? Colors.green.shade800 : Colors.red.shade800,
-                            ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: _isOnline ? Colors.green : Colors.red,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _isOnline ? 'متصل الآن' : 'غير متصل',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: _isOnline ? Colors.green.shade800 : Colors.red.shade800,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
