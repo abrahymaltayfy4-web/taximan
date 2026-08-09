@@ -1,25 +1,37 @@
-// lib/repositories/ride_repository.dart
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../core/services/ride_service.dart';
 import '../models/ride_model.dart';
 
 class RideRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final RideService _rideService;
 
-  // Create a new ride request
-  Future<void> createRide(RideModel ride) async {
-    await _firestore.collection('rides').doc(ride.rideId).set(ride.toJson());
+  RideRepository(this._rideService);
+
+  Future<void> acceptRide({required String rideId, required String driverId}) async {
+    await _rideService.acceptRide(rideId: rideId, driverId: driverId);
   }
 
-  // Update ride status (e.g., accepted, started, completed)
-  Future<void> updateRideStatus({
-    required String rideId,
-    required String status,
-    String? driverId,
-  }) async {
-    final Map<String, dynamic> updateData = {'status': status};
-    if (driverId != null) {
-      updateData['driverId'] = driverId;
-    }
-    await _firestore.collection('rides').doc(rideId).update(updateData);
+  Future<void> updateRideStatus({required String rideId, required String status}) async {
+    await _rideService.updateRideStatus(rideId: rideId, status: status);
+  }
+
+  Future<void> completeRide({required String rideId, required String driverId}) async {
+    await _rideService.completeRide(rideId: rideId, driverId: driverId);
+  }
+
+  Stream<List<RideModel>> streamPendingRides() {
+    return _rideService.streamPendingRides().map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return RideModel.fromJson(doc.data() as Map<String, dynamic>, doc.id);
+      }).toList();
+    });
+  }
+
+  Stream<RideModel?> streamRide(String rideId) {
+    return _rideService.streamRide(rideId).map((doc) {
+      if (doc.exists && doc.data() != null) {
+        return RideModel.fromJson(doc.data() as Map<String, dynamic>, doc.id);
+      }
+      return null;
+    });
   }
 }

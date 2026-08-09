@@ -10,7 +10,8 @@ import '../../../theme/app_theme.dart';
 
 import '../cubit/ride_cubit.dart';
 import '../cubit/ride_state.dart';
-import 'waiting_for_driver_view.dart';
+import '../../ride/views/ride_tracking_view.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({Key? key}) : super(key: key);
@@ -147,9 +148,8 @@ class _HomeViewState extends State<HomeView> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => WaitingForDriverView(
+                  builder: (context) => RideTrackingView(
                     rideId: state.rideId,
-                    destinationName: _destinationController.text,
                   ),
                 ),
               );
@@ -380,8 +380,11 @@ class _HomeViewState extends State<HomeView> {
                                   }
 
                                   context.read<RideCubit>().requestRide(
-                                        pickup: _pickupController.text.trim(),
-                                        destination: _destinationController.text.trim(),
+                                        pickupLocation: GeoPoint(_currentPosition!.latitude, _currentPosition!.longitude),
+                                        pickupAddress: _pickupController.text.trim(),
+                                        destinationLocation: GeoPoint(_destinationPosition!.latitude, _destinationPosition!.longitude),
+                                        destinationAddress: _destinationController.text.trim(),
+                                        distanceKm: _calculatedDistanceInKm ?? 0.0,
                                       );
                                 },
                           child: state is RideLoading

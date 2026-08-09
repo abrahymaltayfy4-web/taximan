@@ -40,4 +40,12 @@ class DriverRepository {
       longitude: longitude,
     );
   }
+
+  Future<void> updateDriverStatus(String driverId, String status) async {
+    await _firestoreService.setDocument(
+      collectionPath: 'drivers',
+      docId: driverId,
+      data: {'status': status},
+    );
+  }
 }

@@ -43,8 +43,10 @@ class DriverHomeCubit extends Cubit<DriverHomeState> {
         }
 
         _startLocationTracking(driverId);
+        await _driverRepository.updateDriverStatus(driverId, 'online');
       } else {
         _locationSubscription?.cancel();
+        await _driverRepository.updateDriverStatus(driverId, 'offline');
       }
 
       emit(DriverStatusUpdated(isOnline));
