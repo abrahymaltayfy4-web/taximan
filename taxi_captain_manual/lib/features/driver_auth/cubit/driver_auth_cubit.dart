@@ -43,12 +43,15 @@ class DriverAuthCubit extends Cubit<DriverAuthState> {
       if (driverData != null) {
         emit(DriverAuthenticated(driverData));
       } else {
-        emit(const DriverAuthError('بيانات الكابتن غير موجودة في النظام'));
+        // هذا الحساب ليس كابتن — نرفض الدخول
+        await _authRepository.signOut();
+        emit(const DriverAuthError('هذا الحساب مسجل كعميل. يرجى استخدام تطبيق العميل'));
       }
     } catch (e) {
       emit(DriverAuthError(e.toString()));
     }
   }
+
 
   Future<void> register({
     required String email,

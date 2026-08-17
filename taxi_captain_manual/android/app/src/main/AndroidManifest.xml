@@ -3,7 +3,10 @@
        <!-- إضافة إذن الموقع لأنك مفعل خاصية myLocationEnabled -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />    
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- إذن الإشعارات -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />    
     <application
         android:label="taxi_captain_manual"
         android:name="${applicationName}"

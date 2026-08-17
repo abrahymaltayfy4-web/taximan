@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/services/directions_service.dart';
 import '../../../core/services/ride_service.dart';
 import '../../../repositories/ride_repository.dart';
@@ -22,29 +23,94 @@ class ActiveRideView extends StatefulWidget {
 
 class _ActiveRideViewState extends State<ActiveRideView> {
   final DirectionsService _directionsService = DirectionsService();
-  Set<Polyline> _polylines = {};
-  bool _routeDrawn = false;
+  final Set<Polyline> _polylines = {};
+  final Set<Marker> _markers = {};
+  bool _routeToPickupDrawn = false;
+  bool _routeToDestinationDrawn = false;
   GoogleMapController? _mapController;
+  LatLng? _driverPosition;
+  LatLng? _pendingPickup; // نقطة البداية المعلقة لرسم المسار عند جهوز الموقع
 
-  void _drawRoute(LatLng origin, LatLng destination) async {
-    if (_routeDrawn) return;
-    final directions = await _directionsService.getDirections(origin: origin, destination: destination);
+  @override
+  void initState() {
+    super.initState();
+    _getDriverPosition();
+  }
+
+  Future<void> _getDriverPosition() async {
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      if (!mounted) return;
+      setState(() {
+        _driverPosition = LatLng(pos.latitude, pos.longitude);
+      });
+      // لو كان في pickup معلق، ارسم المسار فوراً
+      if (_pendingPickup != null && !_routeToPickupDrawn) {
+        _drawRouteToPickup(_pendingPickup!);
+      }
+    } catch (_) {}
+  }
+
+  /// رسم مسار من موقع الكابتن إلى نقطة بداية العميل (عند حالة accepted)
+  Future<void> _drawRouteToPickup(LatLng pickup) async {
+    _pendingPickup = pickup; // خزّن النقطة دائماً
+    if (_routeToPickupDrawn) return;
+    if (_driverPosition == null) return; // سيتم الرسم لما يجهز الموقع
+
+    final directions = await _directionsService.getDirections(
+      origin: _driverPosition!,
+      destination: pickup,
+    );
+
     if (directions != null && mounted) {
       setState(() {
+        _polylines.clear();
         _polylines.add(
           Polyline(
-            polylineId: const PolylineId('route'),
+            polylineId: const PolylineId('route_to_pickup'),
+            color: Colors.blue,
+            width: 5,
+            points: directions['polylineCoordinates'],
+          ),
+        );
+        _routeToPickupDrawn = true;
+      });
+
+      if (directions['polylineCoordinates'].isNotEmpty) {
+        final bounds = _getBounds(directions['polylineCoordinates']);
+        _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
+      }
+    }
+  }
+
+  /// رسم مسار الرحلة من نقطة البداية إلى الوجهة (عند حالة started)
+  Future<void> _drawRouteToDestination(LatLng pickup, LatLng destination) async {
+    if (_routeToDestinationDrawn) return;
+
+    final directions = await _directionsService.getDirections(
+      origin: pickup,
+      destination: destination,
+    );
+
+    if (directions != null && mounted) {
+      setState(() {
+        _polylines.clear();
+        _polylines.add(
+          Polyline(
+            polylineId: const PolylineId('route_to_destination'),
             color: AppTheme.deepBurgundy,
             width: 5,
             points: directions['polylineCoordinates'],
           ),
         );
-        _routeDrawn = true;
+        _routeToDestinationDrawn = true;
       });
-      // Adjust camera bounds to fit route
+
       if (directions['polylineCoordinates'].isNotEmpty) {
         final bounds = _getBounds(directions['polylineCoordinates']);
-        _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+        _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 80));
       }
     }
   }
@@ -102,7 +168,13 @@ class _ActiveRideViewState extends State<ActiveRideView> {
                 } else if (state is CaptainActiveRide) {
                   final pickup = LatLng(state.ride.pickupLocation.latitude, state.ride.pickupLocation.longitude);
                   final destination = LatLng(state.ride.destinationLocation.latitude, state.ride.destinationLocation.longitude);
-                  _drawRoute(pickup, destination);
+
+                  // رسم المسار حسب حالة الرحلة
+                  if (state.ride.status == 'accepted' || state.ride.status == 'driver_arrived') {
+                    _drawRouteToPickup(pickup);
+                  } else if (state.ride.status == 'started') {
+                    _drawRouteToDestination(pickup, destination);
+                  }
                 }
               },
               builder: (context, state) {
@@ -120,6 +192,36 @@ class _ActiveRideViewState extends State<ActiveRideView> {
                   final pickup = LatLng(ride.pickupLocation.latitude, ride.pickupLocation.longitude);
                   final destination = LatLng(ride.destinationLocation.latitude, ride.destinationLocation.longitude);
 
+                  // تحديث الماركرز
+                  _markers.clear();
+                  _markers.add(
+                    Marker(
+                      markerId: const MarkerId('pickup'),
+                      position: pickup,
+                      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+                      infoWindow: InfoWindow(title: 'نقطة الانطلاق', snippet: ride.pickupAddress),
+                    ),
+                  );
+                  _markers.add(
+                    Marker(
+                      markerId: const MarkerId('destination'),
+                      position: destination,
+                      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+                      infoWindow: InfoWindow(title: 'وجهة الوصول', snippet: ride.destinationAddress),
+                    ),
+                  );
+                  // ماركر موقع الكابتن
+                  if (_driverPosition != null) {
+                    _markers.add(
+                      Marker(
+                        markerId: const MarkerId('driver'),
+                        position: _driverPosition!,
+                        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+                        infoWindow: const InfoWindow(title: 'موقعك'),
+                      ),
+                    );
+                  }
+
                   String statusText = '';
                   Color statusColor = Colors.grey;
                   String buttonText = '';
@@ -135,7 +237,14 @@ class _ActiveRideViewState extends State<ActiveRideView> {
                     statusText = 'وصلت لموقع العميل';
                     statusColor = Colors.green;
                     buttonText = 'بدء الرحلة';
-                    onButtonPress = () => context.read<CaptainRideCubit>().updateRideStatus(ride.rideId, 'started');
+                    onButtonPress = () {
+                      // عند بدء الرحلة نحتاج رسم مسار جديد
+                      setState(() {
+                        _routeToDestinationDrawn = false;
+                        _polylines.clear();
+                      });
+                      context.read<CaptainRideCubit>().updateRideStatus(ride.rideId, 'started');
+                    };
                   } else if (ride.status == 'started') {
                     statusText = 'الرحلة جارية';
                     statusColor = AppTheme.deepBurgundy;
@@ -153,18 +262,7 @@ class _ActiveRideViewState extends State<ActiveRideView> {
                         zoomControlsEnabled: false,
                         onMapCreated: (controller) => _mapController = controller,
                         polylines: _polylines,
-                        markers: {
-                          Marker(
-                            markerId: const MarkerId('pickup'),
-                            position: pickup,
-                            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-                          ),
-                          Marker(
-                            markerId: const MarkerId('destination'),
-                            position: destination,
-                            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-                          ),
-                        },
+                        markers: _markers,
                       ),
                       Positioned(
                         top: 50.h,

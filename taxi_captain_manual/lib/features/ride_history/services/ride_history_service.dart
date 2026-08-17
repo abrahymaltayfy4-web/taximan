@@ -1,0 +1,19 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+class RideHistoryService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<List<Map<String, dynamic>>> getCompletedRides({
+    required String driverId,
+    required DateTime startDate,
+  }) async {
+    final snapshot = await _firestore
+        .collection('rides')
+        .where('driverId', isEqualTo: driverId)
+        .where('status', isEqualTo: 'completed')
+        .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+        .orderBy('createdAt', descending: true)
+        .get();
+    return snapshot.docs.map((doc) => {'id': doc.id, ...doc.data()}).toList();
+  }
+}

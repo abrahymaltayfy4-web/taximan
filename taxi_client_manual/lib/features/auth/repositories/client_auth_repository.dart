@@ -48,11 +48,24 @@ class ClientAuthRepository {
         email: email,
         password: password,
       );
-      return credential.user;
+
+      final user = credential.user;
+      if (user != null) {
+        // التحقق من أن الحساب عميل وليس كابتن
+        final clientDoc = await _firestore.collection('clients').doc(user.uid).get();
+        if (!clientDoc.exists) {
+          // هذا حساب كابتن وليس عميل — نرفض الدخول
+          await _auth.signOut();
+          throw Exception('هذا الحساب مسجل ككابتن. يرجى استخدام تطبيق الكابتن');
+        }
+      }
+
+      return user;
     } catch (e) {
       throw Exception(e.toString());
     }
   }
+
 
   // تسجيل الخروج
   Future<void> signOut() async {

@@ -105,7 +105,15 @@ class RideCubit extends Cubit<RideState> {
             body: 'الكابتن ${ride.driverName ?? ''} في طريقه إليك',
           );
         case 'driver_arrived':
+          NotificationService.showNotification(
+            title: 'الكابتن وصل! 🚗',
+            body: 'الكابتن ${ride.driverName ?? ''} وصل لموقعك',
+          );
         case 'started':
+          NotificationService.showNotification(
+            title: 'الرحلة بدأت! 🛣️',
+            body: 'رحلتك مع الكابتن ${ride.driverName ?? ''} بدأت الآن',
+          );
           // بدء الاستماع لموقع السائق إذا كان لديه driverId ولم نبدأ الاستماع بعد
           if (ride.driverId != null &&
               _driverLocationSubscription == null) {

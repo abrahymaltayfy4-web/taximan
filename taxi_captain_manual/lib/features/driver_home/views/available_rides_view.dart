@@ -9,6 +9,7 @@ import '../../../repositories/ride_repository.dart';
 import '../../../theme/app_theme.dart';
 import '../cubit/ride_cubit.dart';
 import 'active_ride_view.dart';
+import 'ride_preview_view.dart';
 
 class AvailableRidesView extends StatefulWidget {
   const AvailableRidesView({super.key});
@@ -99,7 +100,22 @@ class _AvailableRidesViewState extends State<AvailableRidesView> {
                   itemCount: state.rides.length,
                   itemBuilder: (context, index) {
                     final ride = state.rides[index];
-                    return Card(
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RidePreviewView(
+                              ride: ride,
+                              onAccept: () {
+                                Navigator.pop(context);
+                                context.read<CaptainRideCubit>().acceptRide(ride.rideId, driverId);
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                      child: Card(
                       elevation: 4,
                       shadowColor: AppTheme.charcoalBlack.withValues(alpha: 0.1),
                       color: AppTheme.pureWhite,
@@ -192,10 +208,21 @@ class _AvailableRidesViewState extends State<AvailableRidesView> {
                                   ),
                                 ),
                                 onPressed: () {
-                                  context.read<CaptainRideCubit>().acceptRide(ride.rideId, driverId);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => RidePreviewView(
+                                        ride: ride,
+                                        onAccept: () {
+                                          Navigator.pop(context);
+                                          context.read<CaptainRideCubit>().acceptRide(ride.rideId, driverId);
+                                        },
+                                      ),
+                                    ),
+                                  );
                                 },
                                 child: Text(
-                                  'قبول الرحلة',
+                                  'عرض تفاصيل الرحلة',
                                   style: GoogleFonts.cairo(
                                     fontSize: 16.sp,
                                     fontWeight: FontWeight.bold,
@@ -206,6 +233,7 @@ class _AvailableRidesViewState extends State<AvailableRidesView> {
                           ],
                         ),
                       ),
+                    ),
                     );
                   },
                 );

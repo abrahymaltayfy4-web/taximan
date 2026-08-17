@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import '../../../theme/app_theme.dart';
 import '../cubit/ride_history_cubit.dart';
+import '../repositories/client_ride_history_repository.dart';
+import '../services/client_ride_history_service.dart';
 
 class RideHistoryView extends StatelessWidget {
   const RideHistoryView({Key? key}) : super(key: key);
@@ -12,7 +14,7 @@ class RideHistoryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => ClientRideHistoryCubit()..loadHistory('today'),
+      create: (context) => ClientRideHistoryCubit(ClientRideHistoryRepository(ClientRideHistoryService()))..loadHistory('today'),
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(

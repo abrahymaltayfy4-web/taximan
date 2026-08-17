@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_core/firebase_core.dart'; // 1. استيراد حزمة الفايربيز
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'theme/app_theme.dart';
 import 'features/driver_auth/views/driver_login_view.dart';
+import 'features/driver_home/views/driver_home_view.dart';
 import 'features/driver_auth/cubit/driver_auth_cubit.dart';
 import 'core/services/firebase_auth_service.dart';
 import 'core/services/firestore_service.dart';
@@ -13,10 +16,8 @@ import 'repositories/auth_repository.dart';
 import 'repositories/driver_repository.dart';
 import 'core/services/notification_service.dart';
 
-void main() async { 
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  
   await Firebase.initializeApp();
   await NotificationService.initialize();
 
@@ -38,7 +39,7 @@ void main() async {
 }
 
 class RahalDriverApp extends StatelessWidget {
-  const RahalDriverApp({Key? key}) : super(key: key);
+  const RahalDriverApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -60,10 +61,67 @@ class RahalDriverApp extends StatelessWidget {
             title: 'Rahal Driver',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
-            home: const DriverLoginView(),
+            home: const _AuthGate(),
           );
         },
       ),
     );
   }
 }
+
+/// يتحقق من حالة تسجيل الدخول ويوجه الكابتن للشاشة المناسبة
+class _AuthGate extends StatefulWidget {
+  const _AuthGate();
+
+  @override
+  State<_AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<_AuthGate> {
+  bool _isLoading = true;
+  bool _isLoggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAuthStatus();
+  }
+
+  Future<void> _checkAuthStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      // التحقق من أن الحساب كابتن فعلاً
+      final driverDoc = await FirebaseFirestore.instance
+          .collection('drivers')
+          .doc(user.uid)
+          .get();
+      if (driverDoc.exists) {
+        setState(() {
+          _isLoggedIn = true;
+          _isLoading = false;
+        });
+        return;
+      } else {
+        // حساب عميل — نسجل خروج
+        await FirebaseAuth.instance.signOut();
+      }
+    }
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        backgroundColor: AppTheme.creamBackground,
+        body: Center(
+          child: CircularProgressIndicator(color: AppTheme.deepBurgundy),
+        ),
+      );
+    }
+
+    return _isLoggedIn ? const DriverHomeView() : const DriverLoginView();
+  }
+}

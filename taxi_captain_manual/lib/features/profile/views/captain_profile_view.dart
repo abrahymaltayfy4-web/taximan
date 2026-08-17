@@ -4,6 +4,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../theme/app_theme.dart';
 import '../cubit/profile_cubit.dart';
+import '../repositories/profile_repository.dart';
+import '../services/profile_service.dart';
 
 class CaptainProfileView extends StatefulWidget {
   const CaptainProfileView({super.key});
@@ -33,7 +35,7 @@ class _CaptainProfileViewState extends State<CaptainProfileView> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => ProfileCubit()..loadProfile(),
+      create: (context) => ProfileCubit(ProfileRepository(ProfileService()))..loadProfile(),
       child: Scaffold(
         backgroundColor: AppTheme.creamBackground,
         appBar: AppBar(
