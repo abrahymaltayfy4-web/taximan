@@ -11,12 +11,14 @@ import 'core/services/firebase_auth_service.dart';
 import 'core/services/firestore_service.dart';
 import 'repositories/auth_repository.dart';
 import 'repositories/driver_repository.dart';
+import 'core/services/notification_service.dart';
 
 void main() async { 
   WidgetsFlutterBinding.ensureInitialized();
 
   
   await Firebase.initializeApp();
+  await NotificationService.initialize();
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

@@ -3,21 +3,45 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../core/services/ride_service.dart';
 import '../../../repositories/ride_repository.dart';
 import '../../../theme/app_theme.dart';
 import '../cubit/ride_cubit.dart';
 import 'active_ride_view.dart';
 
-class AvailableRidesView extends StatelessWidget {
+class AvailableRidesView extends StatefulWidget {
   const AvailableRidesView({super.key});
+
+  @override
+  State<AvailableRidesView> createState() => _AvailableRidesViewState();
+}
+
+class _AvailableRidesViewState extends State<AvailableRidesView> {
+  late CaptainRideCubit _rideCubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _rideCubit = CaptainRideCubit(RideRepository(RideService()));
+    _initLocationAndListen();
+  }
+
+  Future<void> _initLocationAndListen() async {
+    try {
+      Position pos = await Geolocator.getCurrentPosition();
+      _rideCubit.listenToPendingRides(driverLat: pos.latitude, driverLng: pos.longitude);
+    } catch (e) {
+      _rideCubit.listenToPendingRides();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final driverId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
-    return BlocProvider(
-      create: (context) => CaptainRideCubit(RideRepository(RideService()))..listenToPendingRides(),
+    return BlocProvider.value(
+      value: _rideCubit,
       child: Scaffold(
         backgroundColor: AppTheme.creamBackground,
         appBar: AppBar(
@@ -49,7 +73,7 @@ class AvailableRidesView extends StatelessWidget {
               }
             },
             builder: (context, state) {
-              if (state is CaptainRideLoading) {
+              if (state is CaptainRideLoading || state is CaptainRideInitial) {
                 return const Center(child: CircularProgressIndicator(color: AppTheme.deepBurgundy));
               } else if (state is CaptainPendingRidesEmpty) {
                 return Center(

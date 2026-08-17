@@ -3,6 +3,7 @@ import '../../../repositories/ride_repository.dart';
 import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
+import '../../../core/services/notification_service.dart';
 
 abstract class CaptainRideState extends Equatable {
   const CaptainRideState();
@@ -57,14 +58,23 @@ class CaptainRideCubit extends Cubit<CaptainRideState> {
   final RideRepository _rideRepository;
   StreamSubscription? _pendingRidesSubscription;
   StreamSubscription? _activeRideSubscription;
+  int _previousRideCount = 0;
 
   CaptainRideCubit(this._rideRepository) : super(CaptainRideInitial());
 
-  void listenToPendingRides() {
+  void listenToPendingRides({double? driverLat, double? driverLng}) {
     emit(CaptainRideLoading());
     _pendingRidesSubscription?.cancel();
-    _pendingRidesSubscription = _rideRepository.streamPendingRides().listen(
+    _pendingRidesSubscription = _rideRepository.streamPendingRides(driverLat: driverLat, driverLng: driverLng).listen(
       (rides) {
+        if (rides.length > _previousRideCount && _previousRideCount > 0) {
+          NotificationService.showNotification(
+            title: 'رحلة جديدة!', 
+            body: 'وصل طلب رحلة جديد من ${rides.first.customerName}'
+          );
+        }
+        _previousRideCount = rides.length;
+        
         if (rides.isEmpty) {
           emit(CaptainPendingRidesEmpty());
         } else {

@@ -11,7 +11,10 @@ import '../../../theme/app_theme.dart';
 import '../cubit/ride_cubit.dart';
 import '../cubit/ride_state.dart';
 import '../../ride/views/ride_tracking_view.dart';
+import '../../ride_history/views/ride_history_view.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math' as math;
+import 'dart:async';
 
 class HomeView extends StatefulWidget {
   const HomeView({Key? key}) : super(key: key);
@@ -38,6 +41,7 @@ class _HomeViewState extends State<HomeView> {
   
   final TextEditingController _pickupController = TextEditingController(text: 'موقعي الحالي');
   final TextEditingController _destinationController = TextEditingController();
+  StreamSubscription? _driversSubscription;
 
   @override
   void initState() {
@@ -77,6 +81,49 @@ class _HomeViewState extends State<HomeView> {
         CameraPosition(target: _currentPosition!, zoom: 16.0),
       ),
     );
+    _listenToNearbyDrivers();
+  }
+
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    var p = 0.017453292519943295;
+    var c = math.cos;
+    var a = 0.5 - c((lat2 - lat1) * p) / 2 +
+        c(lat1 * p) * c(lat2 * p) * (1 - c((lon2 - lon1) * p)) / 2;
+    return 12742 * math.asin(math.sqrt(a));
+  }
+
+  void _listenToNearbyDrivers() {
+    _driversSubscription = FirebaseFirestore.instance
+        .collection('drivers')
+        .where('status', isEqualTo: 'online')
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+      setState(() {
+        _markers.removeWhere((m) => m.markerId.value.startsWith('driver_'));
+        for (var doc in snapshot.docs) {
+          final data = doc.data();
+          final location = data['location'];
+          if (location is GeoPoint && _currentPosition != null) {
+            final driverLatLng = LatLng(location.latitude, location.longitude);
+            final distance = _calculateDistance(
+              _currentPosition!.latitude, _currentPosition!.longitude,
+              driverLatLng.latitude, driverLatLng.longitude,
+            );
+            if (distance <= 2.0) {
+              _markers.add(
+                Marker(
+                  markerId: MarkerId('driver_${doc.id}'),
+                  position: driverLatLng,
+                  icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+                  infoWindow: InfoWindow(title: data['name'] ?? 'كابتن', snippet: '${data['carModel'] ?? ''}'),
+                ),
+              );
+            }
+          }
+        }
+      });
+    });
   }
 
   // دالة لجلب المسار الفعلي والمسافة والوقت عبر Directions API
@@ -124,6 +171,7 @@ class _HomeViewState extends State<HomeView> {
 
   @override
   void dispose() {
+    _driversSubscription?.cancel();
     _pickupController.dispose();
     _destinationController.dispose();
     _mapController?.dispose();
@@ -207,8 +255,13 @@ class _HomeViewState extends State<HomeView> {
                           ],
                         ),
                         child: IconButton(
-                          icon: const Icon(Icons.menu, color: AppTheme.charcoalBlack),
-                          onPressed: () {},
+                          icon: const Icon(Icons.history, color: AppTheme.charcoalBlack),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const RideHistoryView()),
+                            );
+                          },
                         ),
                       ),
                       Container(

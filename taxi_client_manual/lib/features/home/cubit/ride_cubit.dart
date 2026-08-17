@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/ride_model.dart';
 import 'ride_state.dart';
+import '../../../core/services/notification_service.dart';
 
 class RideCubit extends Cubit<RideState> {
   RideCubit() : super(RideInitial());
@@ -19,6 +20,7 @@ class RideCubit extends Cubit<RideState> {
 
   RideModel? _currentRide;
   GeoPoint? _currentDriverLocation;
+  Timer? _autoCancelTimer;
 
   Future<void> requestRide({
     required GeoPoint pickupLocation,
@@ -88,9 +90,20 @@ class RideCubit extends Cubit<RideState> {
 
       switch (ride.status) {
         case 'pending':
+          _autoCancelTimer?.cancel();
+          _autoCancelTimer = Timer(const Duration(minutes: 3), () {
+            if (_currentRide?.status == 'pending' || state is RidePending) {
+              cancelRide(rideId);
+            }
+          });
           emit(RidePending(rideId));
           break;
         case 'accepted':
+          _autoCancelTimer?.cancel();
+          NotificationService.showNotification(
+            title: 'تم قبول طلبك!',
+            body: 'الكابتن ${ride.driverName ?? ''} في طريقه إليك',
+          );
         case 'driver_arrived':
         case 'started':
           // بدء الاستماع لموقع السائق إذا كان لديه driverId ولم نبدأ الاستماع بعد
@@ -102,11 +115,13 @@ class RideCubit extends Cubit<RideState> {
               ride: ride, driverLocation: _currentDriverLocation));
           break;
         case 'completed':
+          _autoCancelTimer?.cancel();
           _driverLocationSubscription?.cancel();
           _driverLocationSubscription = null;
           emit(RideCompleted(ride));
           break;
         case 'cancelled':
+          _autoCancelTimer?.cancel();
           _driverLocationSubscription?.cancel();
           _driverLocationSubscription = null;
           emit(RideCancelled());
@@ -154,6 +169,7 @@ class RideCubit extends Cubit<RideState> {
 
   @override
   Future<void> close() {
+    _autoCancelTimer?.cancel();
     _rideSubscription?.cancel();
     _driverLocationSubscription?.cancel();
     return super.close();

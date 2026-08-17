@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -245,6 +246,11 @@ class _ActiveRideViewState extends State<ActiveRideView> {
                                       ),
                                     ),
                                   ),
+                                  if (ride.customerPhone.isNotEmpty)
+                                    IconButton(
+                                      onPressed: () => launchUrl(Uri.parse('tel:${ride.customerPhone}')),
+                                      icon: Icon(Icons.phone, color: Colors.green, size: 24.w),
+                                    ),
                                 ],
                               ),
                               SizedBox(height: 16.h),

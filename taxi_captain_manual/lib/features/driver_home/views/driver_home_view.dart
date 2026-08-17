@@ -6,7 +6,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../cubit/driver_home_cubit.dart';
 import '../../../repositories/driver_repository.dart';
 import '../../../core/services/firestore_service.dart';
-import 'available_rides_view.dart'; // تأكد من مطابقة مسار ملف AvailableRidesView
+import 'available_rides_view.dart';
+import '../../profile/views/captain_profile_view.dart';
+import '../../ride_history/views/ride_history_view.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../../theme/app_theme.dart';
+import '../../driver_auth/views/driver_login_view.dart';
 
 class DriverHomeView extends StatelessWidget {
   const DriverHomeView({Key? key}) : super(key: key);
@@ -75,13 +81,63 @@ class _DriverHomeBodyState extends State<_DriverHomeBody> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    CircleAvatar(
-                      backgroundColor: Colors.white,
-                      child: IconButton(
-                        icon: const Icon(Icons.menu, color: Colors.black),
-                        onPressed: () {},
+                      CircleAvatar(
+                        backgroundColor: Colors.white,
+                        child: IconButton(
+                          icon: const Icon(Icons.menu, color: Colors.black),
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: AppTheme.creamBackground,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+                              ),
+                              builder: (context) {
+                                return Directionality(
+                                  textDirection: TextDirection.rtl,
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(vertical: 24.h),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        ListTile(
+                                          leading: Icon(Icons.person, color: AppTheme.deepBurgundy),
+                                          title: Text('الملف الشخصي', style: GoogleFonts.cairo(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            Navigator.push(context, MaterialPageRoute(builder: (_) => const CaptainProfileView()));
+                                          },
+                                        ),
+                                        ListTile(
+                                          leading: Icon(Icons.history, color: AppTheme.deepBurgundy),
+                                          title: Text('سجل الرحلات', style: GoogleFonts.cairo(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            Navigator.push(context, MaterialPageRoute(builder: (_) => const RideHistoryView()));
+                                          },
+                                        ),
+                                        ListTile(
+                                          leading: Icon(Icons.logout, color: Colors.red),
+                                          title: Text('تسجيل الخروج', style: GoogleFonts.cairo(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Colors.red)),
+                                          onTap: () async {
+                                            await FirebaseAuth.instance.signOut();
+                                            if (context.mounted) {
+                                              Navigator.of(context).pushAndRemoveUntil(
+                                                MaterialPageRoute(builder: (_) => const DriverLoginView()),
+                                                (route) => false,
+                                              );
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
+                            );
+                          },
+                        ),
                       ),
-                    ),
                     Row(
                       children: [
                         // زر الانتقال إلى صفحة عرض الطلبات المتاحة بجانب الشريط العلوي
