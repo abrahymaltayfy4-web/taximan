@@ -15,10 +15,24 @@ import 'core/services/firestore_service.dart';
 import 'repositories/auth_repository.dart';
 import 'repositories/driver_repository.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/admin_notification_listener.dart';
+import 'core/services/fcm_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+/// يعمل حتى لو التطبيق مغلق تماماً من الرام
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  // الإشعار يظهر تلقائياً من النظام — لا يحتاج كود إضافي
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  
+  // تسجيل background handler قبل أي شيء
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  
   await NotificationService.initialize();
 
   SystemChrome.setPreferredOrientations([
@@ -96,10 +110,60 @@ class _AuthGateState extends State<_AuthGate> {
           .doc(user.uid)
           .get();
       if (driverDoc.exists) {
+        final data = driverDoc.data();
+        // التحقق من حالة الحظر
+        if (data?['isBlocked'] == true) {
+          await FirebaseAuth.instance.signOut();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('تم حظر حسابك. تواصل مع الإدارة.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          setState(() { _isLoading = false; });
+          return;
+        }
+        // التحقق من حالة الموافقة
+        final approvalStatus = data?['approvalStatus'] ?? 'approved';
+        if (approvalStatus == 'pending') {
+          await FirebaseAuth.instance.signOut();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('حسابك قيد المراجعة. سيتم إعلامك عند الموافقة.'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+          setState(() { _isLoading = false; });
+          return;
+        }
+        if (approvalStatus == 'rejected') {
+          await FirebaseAuth.instance.signOut();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('تم رفض طلب تسجيلك. تواصل مع الإدارة.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          setState(() { _isLoading = false; });
+          return;
+        }
         setState(() {
           _isLoggedIn = true;
           _isLoading = false;
         });
+        // بدء الاستماع لإشعارات الأدمن
+        AdminNotificationListener.startListening(
+          targetAll: 'all_drivers',
+          targetSpecific: 'specific_driver',
+        );
+        // تفعيل FCM للإشعارات عند إغلاق التطبيق
+        FCMService.initialize(collectionName: 'drivers');
         return;
       } else {
         // حساب عميل — نسجل خروج

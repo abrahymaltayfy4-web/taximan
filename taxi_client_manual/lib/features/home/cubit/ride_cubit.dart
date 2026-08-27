@@ -42,9 +42,30 @@ class RideCubit extends Cubit<RideState> {
           await _firestore.collection('clients').doc(user.uid).get();
       final clientData = clientDoc.data();
 
+      // التحقق من حالة الحظر
+      if (clientData?['isBlocked'] == true) {
+        emit(const RideError('حسابك محظور ولا يمكنك طلب رحلات. تواصل مع الإدارة.'));
+        return;
+      }
+
       final customerName =
           clientData?['name'] ?? user.displayName ?? user.email ?? 'عميل رحال';
       final customerPhone = clientData?['phone'] ?? '';
+
+      // جلب الأسعار الموحدة من الإعدادات
+      double pricePerKm = 500.0;
+      double minimumFare = 500.0;
+      try {
+        final pricingDoc = await _firestore.collection('settings').doc('pricing').get();
+        if (pricingDoc.exists) {
+          final pData = pricingDoc.data()!;
+          pricePerKm = (pData['pricePerKm'] ?? pData['defaultPricePerKm'] ?? 500.0).toDouble();
+          minimumFare = (pData['minimumFare'] ?? 500.0).toDouble();
+        }
+      } catch (_) {}
+
+      // حساب السعر: أقل مشوار = minimumFare
+      final fare = distanceKm * pricePerKm < minimumFare ? minimumFare : distanceKm * pricePerKm;
 
       final rideData = <String, dynamic>{
         'customerId': user.uid,
@@ -60,7 +81,7 @@ class RideCubit extends Cubit<RideState> {
         'destinationLocation': destinationLocation,
         'destinationAddress': destinationAddress,
         'status': 'pending',
-        'fare': 0.0,
+        'fare': fare,
         'distanceKm': distanceKm,
         'createdAt': FieldValue.serverTimestamp(),
         'acceptedAt': null,

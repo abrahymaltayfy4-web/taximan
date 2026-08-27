@@ -77,6 +77,7 @@ class DriverAuthCubit extends Cubit<DriverAuthState> {
         pricePerKm: pricePerKm,
         status: 'offline',
         rating: 5.0,
+        approvalStatus: 'pending',
       );
 
       await _driverRepository.saveDriverData(newDriver);

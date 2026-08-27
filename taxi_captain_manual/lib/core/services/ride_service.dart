@@ -1,9 +1,29 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math';
 
 class RideService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  /// جلب إعدادات الأسعار من Firestore
+  Future<Map<String, double>> _getPricingSettings() async {
+    final doc = await _firestore.collection('settings').doc('pricing').get();
+    if (doc.exists) {
+      final data = doc.data()!;
+      return {
+        'pricePerKm': (data['pricePerKm'] ?? data['defaultPricePerKm'] ?? 500.0).toDouble(),
+        'minimumFare': (data['minimumFare'] ?? 500.0).toDouble(),
+        'commissionPercentage': (data['commissionPercentage'] ?? 10.0).toDouble(),
+      };
+    }
+    return {'pricePerKm': 500.0, 'minimumFare': 500.0, 'commissionPercentage': 10.0};
+  }
+
   Future<void> acceptRide({required String rideId, required String driverId}) async {
+    // جلب إعدادات الأسعار الموحدة
+    final pricing = await _getPricingSettings();
+    final pricePerKm = pricing['pricePerKm']!;
+    final minimumFare = pricing['minimumFare']!;
+
     final rideRef = _firestore.collection('rides').doc(rideId);
     final driverRef = _firestore.collection('drivers').doc(driverId);
 
@@ -26,8 +46,14 @@ class RideService {
       }
 
       final driverData = driverDoc.data()!;
-      final pricePerKm = (driverData['pricePerKm'] ?? 0.0).toDouble();
-      final fare = distanceKm * pricePerKm;
+
+      // التحقق من حالة الحظر
+      if (driverData['isBlocked'] == true) {
+        throw Exception('حسابك محظور ولا يمكنك قبول رحلات. تواصل مع الإدارة.');
+      }
+
+      // حساب السعر الموحد: أقل مشوار = minimumFare
+      final fare = max(minimumFare, distanceKm * pricePerKm);
 
       transaction.update(rideRef, {
         'status': 'accepted',
@@ -56,18 +82,52 @@ class RideService {
     await _firestore.collection('rides').doc(rideId).update(data);
   }
 
+  /// إكمال الرحلة + حساب العمولة + إنشاء سجل معاملة
   Future<void> completeRide({required String rideId, required String driverId}) async {
+    final pricing = await _getPricingSettings();
+    final commissionPercentage = pricing['commissionPercentage']!;
+
     final rideRef = _firestore.collection('rides').doc(rideId);
     final driverRef = _firestore.collection('drivers').doc(driverId);
 
     await _firestore.runTransaction((transaction) async {
+      final rideDoc = await transaction.get(rideRef);
+      final fare = (rideDoc.data()?['fare'] ?? 0.0).toDouble();
+      final commission = fare * commissionPercentage / 100;
+
+      final driverDoc = await transaction.get(driverRef);
+      final currentOwed = (driverDoc.data()?['totalCommissionOwed'] ?? 0.0).toDouble();
+
+      // تحديث الرحلة
       transaction.update(rideRef, {
         'status': 'completed',
         'completedAt': FieldValue.serverTimestamp(),
+        'commission': commission,
+        'commissionPercentage': commissionPercentage,
       });
+
+      // تحديث حالة السائق + إضافة العمولة
       transaction.update(driverRef, {
         'status': 'online',
+        'totalCommissionOwed': currentOwed + commission,
       });
+    });
+
+    // إنشاء سجل المعاملة (خارج الـ transaction لأنه add وليس update)
+    final rideDoc = await rideRef.get();
+    final fare = (rideDoc.data()?['fare'] ?? 0.0).toDouble();
+    final commission = fare * commissionPercentage / 100;
+
+    await _firestore.collection('transactions').add({
+      'driverId': driverId,
+      'driverName': rideDoc.data()?['driverName'] ?? '',
+      'type': 'commission',
+      'amount': commission,
+      'rideId': rideId,
+      'rideFare': fare,
+      'note': 'عمولة رحلة — ${commission.toStringAsFixed(0)} ريال من ${fare.toStringAsFixed(0)} ريال',
+      'createdAt': FieldValue.serverTimestamp(),
+      'createdBy': 'system',
     });
   }
 

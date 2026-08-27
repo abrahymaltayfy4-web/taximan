@@ -9,10 +9,22 @@ import 'theme/app_theme.dart';
 import 'features/auth/views/login_view.dart';
 import 'features/home/views/home_view.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/admin_notification_listener.dart';
+import 'core/services/fcm_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+/// يعمل حتى لو التطبيق مغلق تماماً من الرام
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
   await NotificationService.initialize();
 
   SystemChrome.setPreferredOrientations([
@@ -80,10 +92,32 @@ class _AuthGateState extends State<_AuthGate> {
           .doc(user.uid)
           .get();
       if (clientDoc.exists) {
+        // التحقق من حالة الحظر
+        final data = clientDoc.data();
+        if (data?['isBlocked'] == true) {
+          await FirebaseAuth.instance.signOut();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('تم حظر حسابك. تواصل مع الإدارة.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          setState(() { _isLoading = false; });
+          return;
+        }
         setState(() {
           _isLoggedIn = true;
           _isLoading = false;
         });
+        // بدء الاستماع لإشعارات الأدمن
+        AdminNotificationListener.startListening(
+          targetAll: 'all_users',
+          targetSpecific: 'specific_user',
+        );
+        // تفعيل FCM للإشعارات عند إغلاق التطبيق
+        FCMService.initialize(collectionName: 'clients');
         return;
       } else {
         // حساب كابتن — نسجل خروج

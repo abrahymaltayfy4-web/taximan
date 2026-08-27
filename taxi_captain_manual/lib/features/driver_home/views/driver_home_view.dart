@@ -13,6 +13,7 @@ import '../../../core/services/notification_service.dart';
 import 'available_rides_view.dart';
 import '../../profile/views/captain_profile_view.dart';
 import '../../ride_history/views/ride_history_view.dart';
+import '../../account/views/account_statement_view.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../theme/app_theme.dart';
@@ -39,7 +40,7 @@ class _DriverHomeBody extends StatefulWidget {
   State<_DriverHomeBody> createState() => _DriverHomeBodyState();
 }
 
-class _DriverHomeBodyState extends State<_DriverHomeBody> {
+class _DriverHomeBodyState extends State<_DriverHomeBody> with WidgetsBindingObserver {
   bool _isOnline = false;
   GoogleMapController? _controller;
   LatLng? _currentPosition;
@@ -54,13 +55,36 @@ class _DriverHomeBodyState extends State<_DriverHomeBody> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkLocationPermission();
+    // قراءة حالة السائق من Firestore
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      context.read<DriverHomeCubit>().loadDriverStatus(uid);
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pendingRidesSubscription?.cancel();
     super.dispose();
+  }
+
+  /// عند إغلاق التطبيق أو الانتقال للخلفية → حالة offline
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      if (_isOnline) {
+        context.read<DriverHomeCubit>().goOffline(uid);
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      // عند العودة للتطبيق — اقرأ الحالة من Firestore
+      context.read<DriverHomeCubit>().loadDriverStatus(uid);
+    }
   }
 
   /// بدء الاستماع للرحلات المعلقة عندما يكون الكابتن online
@@ -288,6 +312,14 @@ class _DriverHomeBodyState extends State<_DriverHomeBody> {
                                           onTap: () {
                                             Navigator.pop(context);
                                             Navigator.push(context, MaterialPageRoute(builder: (_) => const RideHistoryView()));
+                                          },
+                                        ),
+                                        ListTile(
+                                          leading: const Icon(Icons.account_balance_wallet, color: AppTheme.deepBurgundy),
+                                          title: Text('كشف الحساب', style: GoogleFonts.cairo(fontSize: 16.sp, fontWeight: FontWeight.bold)),
+                                          onTap: () {
+                                            Navigator.pop(context);
+                                            Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountStatementView()));
                                           },
                                         ),
                                         ListTile(

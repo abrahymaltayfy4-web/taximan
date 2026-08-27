@@ -13,6 +13,8 @@ class DriverModel extends Equatable {
   final String status; // 'offline', 'online', 'busy'
   final GeoPoint? location;
   final double rating;
+  final String approvalStatus; // 'pending', 'approved', 'rejected'
+  final bool isBlocked;
 
   const DriverModel({
     required this.uid,
@@ -25,6 +27,8 @@ class DriverModel extends Equatable {
     required this.status,
     this.location,
     required this.rating,
+    this.approvalStatus = 'approved',
+    this.isBlocked = false,
   });
 
   factory DriverModel.fromJson(Map<String, dynamic> json, String id) {
@@ -39,6 +43,8 @@ class DriverModel extends Equatable {
       status: json['status'] ?? 'offline',
       location: json['location'] as GeoPoint?,
       rating: (json['rating'] ?? 5.0).toDouble(),
+      approvalStatus: json['approvalStatus'] ?? 'approved',
+      isBlocked: json['isBlocked'] ?? false,
     );
   }
 
@@ -53,6 +59,8 @@ class DriverModel extends Equatable {
       'status': status,
       'location': location,
       'rating': rating,
+      'approvalStatus': approvalStatus,
+      'isBlocked': isBlocked,
     };
   }
 
@@ -65,6 +73,8 @@ class DriverModel extends Equatable {
     String? status,
     GeoPoint? location,
     double? rating,
+    String? approvalStatus,
+    bool? isBlocked,
   }) {
     return DriverModel(
       uid: uid,
@@ -77,20 +87,16 @@ class DriverModel extends Equatable {
       status: status ?? this.status,
       location: location ?? this.location,
       rating: rating ?? this.rating,
+      approvalStatus: approvalStatus ?? this.approvalStatus,
+      isBlocked: isBlocked ?? this.isBlocked,
     );
   }
 
   @override
   List<Object?> get props => [
-        uid,
-        name,
-        email,
-        phone,
-        carModel,
-        carPlate,
-        pricePerKm,
-        status,
-        location,
-        rating,
+        uid, name, email, phone,
+        carModel, carPlate, pricePerKm,
+        status, location, rating,
+        approvalStatus, isBlocked,
       ];
 }
