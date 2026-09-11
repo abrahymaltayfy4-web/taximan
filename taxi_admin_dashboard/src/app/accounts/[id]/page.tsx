@@ -53,18 +53,23 @@ export default function DriverAccountPage({ params }: { params: Promise<{ id: st
     // المعاملات
     const q = query(
       collection(db, 'transactions'),
-      where('driverId', '==', id),
-      orderBy('createdAt', 'desc')
+      where('driverId', '==', id)
     );
     const unsubTx = onSnapshot(q, (snap) => {
-      setTransactions(snap.docs.map((d) => ({
+      const txList = snap.docs.map((d) => ({
         id: d.id,
         type: d.data().type || 'commission',
         amount: d.data().amount || 0,
         rideFare: d.data().rideFare || 0,
         note: d.data().note || '',
         createdAt: (d.data().createdAt as Timestamp)?.toDate() || new Date(),
-      })));
+      }));
+      // ترتيب محلي بدل orderBy (لتجنب الحاجة لفهرس مركب)
+      txList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      setTransactions(txList);
+      setLoading(false);
+    }, (error) => {
+      console.error('Transactions error:', error);
       setLoading(false);
     });
 

@@ -61,6 +61,8 @@ class DriverModel extends Equatable {
       'rating': rating,
       'approvalStatus': approvalStatus,
       'isBlocked': isBlocked,
+      'totalCommissionOwed': 0.0,
+      'totalPaid': 0.0,
     };
   }
 

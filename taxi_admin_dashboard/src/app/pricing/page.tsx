@@ -44,6 +44,7 @@ export default function PricingPage() {
     setSaving(true);
     await setDoc(doc(db, 'settings', 'pricing'), {
       ...settings,
+      pricePerKm: settings.defaultPricePerKm, // اسم موحد للتطبيقات
       updatedAt: Timestamp.now(),
       updatedBy: user?.email || 'admin',
     });

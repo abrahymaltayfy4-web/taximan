@@ -40,8 +40,6 @@ class _AccountStatementViewState extends State<AccountStatementView> {
     final txSnap = await _firestore
         .collection('transactions')
         .where('driverId', isEqualTo: _uid)
-        .orderBy('createdAt', descending: true)
-        .limit(50)
         .get();
 
     _transactions = txSnap.docs.map((d) {
@@ -54,6 +52,10 @@ class _AccountStatementViewState extends State<AccountStatementView> {
         'createdAt': (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       };
     }).toList();
+
+    // ترتيب محلي
+    _transactions.sort((a, b) =>
+        (b['createdAt'] as DateTime).compareTo(a['createdAt'] as DateTime));
 
     if (mounted) setState(() => _loading = false);
   }
@@ -116,7 +118,6 @@ class _AccountStatementViewState extends State<AccountStatementView> {
                   ],
                 ),
               ),
-      ),
     );
   }
 
