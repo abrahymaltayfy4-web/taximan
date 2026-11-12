@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProfileService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
+
+  ProfileService(this._firestore);
 
   Future<Map<String, dynamic>?> getDriverProfile(String uid) async {
     final doc = await _firestore.collection('drivers').doc(uid).get();
@@ -11,7 +13,10 @@ class ProfileService {
     return null;
   }
 
-  Future<void> updateDriverProfile(String uid, Map<String, dynamic> data) async {
+  Future<void> updateDriverProfile(
+    String uid,
+    Map<String, dynamic> data,
+  ) async {
     await _firestore.collection('drivers').doc(uid).update(data);
   }
 }

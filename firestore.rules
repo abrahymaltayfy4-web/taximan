@@ -1,0 +1,196 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ═══════════════════════════════════════════
+    // Helper Functions
+    // ═══════════════════════════════════════════
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+             && exists(/databases/$(database)/documents/admin/$(request.auth.uid));
+    }
+
+    function isDriverDoc(driverId) {
+      return isSignedIn()
+             && exists(/databases/$(database)/documents/drivers/$(request.auth.uid))
+             && request.auth.uid == driverId;
+    }
+
+    function isClientDoc(clientId) {
+      return isSignedIn()
+             && exists(/databases/$(database)/documents/clients/$(request.auth.uid))
+             && request.auth.uid == clientId;
+    }
+
+    // التحقق أن الحقول لم تتغير
+    function unchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // ═══════════════════════════════════════════
+    // 1. clients — بيانات العملاء
+    // ═══════════════════════════════════════════
+    match /clients/{clientId} {
+      // العميل يقرأ بياناته فقط — الأدمن يقرأ الكل
+      allow read: if isOwner(clientId) || isAdmin();
+
+      // العميل ينشئ حسابه فقط عند التسجيل
+      allow create: if isOwner(clientId)
+                    && request.resource.data.keys().hasAll(['name', 'phone', 'email'])
+                    && !request.resource.data.keys().hasAny(['isBlocked', 'isDisabled']);
+
+      // العميل يعدل بياناته (ليس isBlocked/isDisabled)
+      allow update: if (isOwner(clientId) && unchanged(['isBlocked', 'isDisabled']))
+                    || isAdmin();
+
+      // الحذف للأدمن فقط
+      allow delete: if isAdmin();
+    }
+
+    // ═══════════════════════════════════════════
+    // 2. drivers — بيانات الكباتن
+    // ═══════════════════════════════════════════
+    match /drivers/{driverId} {
+      // الكابتن يقرأ بياناته — العملاء يقرأون اسم+هاتف+سيارة+موقع — الأدمن كل شيء
+      allow read: if isSignedIn();
+
+      // الكابتن ينشئ حسابه عند التسجيل
+      allow create: if isOwner(driverId)
+                    && request.resource.data.keys().hasAll(['name', 'phone', 'email', 'carModel', 'carPlate'])
+                    && !request.resource.data.keys().hasAny([
+                         'isBlocked', 'isDisabled', 'approvalStatus',
+                         'totalCommissionOwed', 'totalPaid'
+                       ]);
+
+      // الكابتن يعدل: الموقع، الحالة، fcmToken، بيانات شخصية
+      // لا يعدل: fare, commission, isBlocked, approvalStatus, totalCommissionOwed, totalPaid
+      allow update: if (isOwner(driverId) && unchanged([
+                         'isBlocked', 'isDisabled', 'approvalStatus',
+                         'totalCommissionOwed', 'totalPaid',
+                         'rating'
+                       ]))
+                    || isAdmin();
+
+      allow delete: if isAdmin();
+
+      // subcollection: transactions — للقراءة فقط
+      match /transactions/{txId} {
+        allow read: if isOwner(driverId) || isAdmin();
+        allow write: if false; // Admin SDK فقط
+      }
+    }
+
+    // ═══════════════════════════════════════════
+    // 3. rides — الرحلات
+    // ═══════════════════════════════════════════
+    match /rides/{rideId} {
+      // العميل والكابتن المرتبطين يقرأون — الأدمن يقرأ الكل
+      allow read: if isSignedIn() && (
+                    resource.data.customerId == request.auth.uid ||
+                    resource.data.driverId == request.auth.uid ||
+                    isAdmin()
+                  );
+
+      // العميل فقط ينشئ رحلة pending
+      allow create: if isSignedIn()
+                    && request.resource.data.customerId == request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && !request.resource.data.keys().hasAny(['fare', 'commission'])
+                    && exists(/databases/$(database)/documents/clients/$(request.auth.uid));
+
+      // تحديث الرحلة:
+      allow update: if isSignedIn() && (
+                      // الكابتن يقبل رحلة pending فقط
+                      (resource.data.status == 'pending'
+                       && request.resource.data.status == 'accepted'
+                       && request.resource.data.driverId == request.auth.uid
+                       && exists(/databases/$(database)/documents/drivers/$(request.auth.uid))
+                       && unchanged(['customerId', 'fare', 'pickupLocation', 'destinationLocation']))
+
+                      // الكابتن يحدث حالة رحلته (driver_arrived, started, completed)
+                      || (resource.data.driverId == request.auth.uid
+                          && unchanged(['customerId', 'driverId', 'fare', 'pickupLocation', 'destinationLocation']))
+
+                      // العميل يلغي رحلته (pending أو accepted فقط)
+                      || (resource.data.customerId == request.auth.uid
+                          && request.resource.data.status == 'cancelled'
+                          && resource.data.status in ['pending', 'accepted', 'driver_arrived']
+                          && unchanged(['customerId', 'driverId', 'fare']))
+
+                      // الأدمن يعدل أي شيء
+                      || isAdmin()
+                    );
+
+      allow delete: if isAdmin();
+    }
+
+    // العملاء يمكنهم رؤية الرحلات المعلقة (للكابتن)
+    // query: where('status', '==', 'pending')
+    match /{path=**}/rides/{rideId} {
+      allow read: if isSignedIn();
+    }
+
+    // ═══════════════════════════════════════════
+    // 4. admin — مجموعة المديرين
+    // ═══════════════════════════════════════════
+    match /admin/{adminId} {
+      allow read: if isOwner(adminId) || isAdmin();
+      allow write: if false; // Admin SDK فقط — لا كتابة من العميل
+    }
+
+    // ═══════════════════════════════════════════
+    // 5. pricing — إعدادات التسعير
+    // ═══════════════════════════════════════════
+    match /pricing/{doc} {
+      allow read: if isSignedIn(); // الكل يقرأ التسعير
+      allow write: if false; // Admin SDK فقط
+    }
+
+    // ═══════════════════════════════════════════
+    // 6. transactions — المعاملات المالية
+    // ═══════════════════════════════════════════
+    match /transactions/{txId} {
+      allow read: if isAdmin();
+      allow write: if false; // Admin SDK فقط — لا كتابة من Client Bundle
+    }
+
+    // ═══════════════════════════════════════════
+    // 7. idempotency_keys — منع تكرار العمليات
+    // ═══════════════════════════════════════════
+    match /idempotency_keys/{key} {
+      allow read, write: if false; // Admin SDK فقط
+    }
+
+    // ═══════════════════════════════════════════
+    // 8. audit_logs — سجل المراجعة
+    // ═══════════════════════════════════════════
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false; // Admin SDK فقط
+    }
+
+    // ═══════════════════════════════════════════
+    // 9. notifications — الإشعارات
+    // ═══════════════════════════════════════════
+    match /notifications/{notifId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Admin SDK فقط
+    }
+
+    // ═══════════════════════════════════════════
+    // 10. DEFAULT — حظر كل شيء آخر
+    // ═══════════════════════════════════════════
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

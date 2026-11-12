@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CustomerProfileService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
+
+  CustomerProfileService(this._firestore);
 
   Future<Map<String, dynamic>?> getClientProfile(String uid) async {
     final doc = await _firestore.collection('clients').doc(uid).get();
@@ -11,7 +13,10 @@ class CustomerProfileService {
     return null;
   }
 
-  Future<void> updateClientProfile(String uid, Map<String, dynamic> data) async {
+  Future<void> updateClientProfile(
+    String uid,
+    Map<String, dynamic> data,
+  ) async {
     await _firestore.collection('clients').doc(uid).update(data);
   }
 }

@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, onSnapshot, collection, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, User, Phone, Car, CreditCard, Star, MapPin } from 'lucide-react';
 import { formatDate, formatCurrency, formatDistance } from '@/lib/utils';
-import { DRIVER_STATUS_LABELS, RIDE_STATUS_LABELS, type DriverStatus, type RideStatus, type Driver, type Ride } from '@/lib/types';
+import { DRIVER_STATUS_LABELS, RIDE_STATUS_LABELS, type DriverStatus, type RideStatus, type Ride } from '@/lib/types';
+import { useDriver } from '@/features/drivers/data/useDrivers';
+import { mapRide } from '@/features/shared/mappers';
 import Link from 'next/link';
 import { use } from 'react';
 
@@ -19,43 +21,15 @@ const rideStatusVariant: Record<RideStatus, 'default' | 'info' | 'warning' | 'su
 
 export default function DriverDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [driver, setDriver] = useState<Driver | null>(null);
+  const { driver } = useDriver(id);
   const [rides, setRides] = useState<Ride[]>([]);
 
   useEffect(() => {
-    const unsub1 = onSnapshot(doc(db, 'drivers', id), (snap) => {
-      if (snap.exists()) {
-        const d = snap.data();
-        setDriver({
-          uid: snap.id, name: d.name || '', email: d.email || '', phone: d.phone || '',
-          carModel: d.carModel || '', carPlate: d.carPlate || '', pricePerKm: d.pricePerKm || 0,
-          status: d.status || 'offline', location: d.location ? { latitude: d.location.latitude, longitude: d.location.longitude } : null,
-          rating: d.rating || 5.0, isBlocked: d.isBlocked || false, isDisabled: d.isDisabled || false,
-          approvalStatus: d.approvalStatus || 'approved',
-        });
-      }
-    });
-
     const q = query(collection(db, 'rides'), where('driverId', '==', id), orderBy('createdAt', 'desc'));
-    const unsub2 = onSnapshot(q, (snap) => {
-      setRides(snap.docs.map((d) => {
-        const data = d.data();
-        return {
-          rideId: d.id, customerId: data.customerId, customerName: data.customerName || '',
-          customerPhone: data.customerPhone || '', driverId: data.driverId || null,
-          driverName: data.driverName || null, driverPhone: data.driverPhone || null,
-          driverCarModel: data.driverCarModel || null, driverCarPlate: data.driverCarPlate || null,
-          pickupLocation: { latitude: 0, longitude: 0 }, pickupAddress: data.pickupAddress || '',
-          destinationLocation: { latitude: 0, longitude: 0 }, destinationAddress: data.destinationAddress || '',
-          status: data.status, fare: data.fare || 0, distanceKm: data.distanceKm || 0,
-          createdAt: (data.createdAt as Timestamp)?.toDate() || new Date(),
-          acceptedAt: (data.acceptedAt as Timestamp)?.toDate() || null,
-          completedAt: (data.completedAt as Timestamp)?.toDate() || null,
-        };
-      }));
+    const unsub = onSnapshot(q, (snap) => {
+      setRides(snap.docs.map((d) => mapRide(d.id, d.data())));
     });
-
-    return () => { unsub1(); unsub2(); };
+    return () => unsub();
   }, [id]);
 
   if (!driver) return <div className="flex items-center justify-center h-64 text-gray-400">جاري التحميل...</div>;
@@ -71,7 +45,6 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Driver Info */}
         <Card className="lg:col-span-2">
           <CardHeader><CardTitle>المعلومات الشخصية</CardTitle></CardHeader>
           <CardContent>
@@ -104,7 +77,6 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
           </CardContent>
         </Card>
 
-        {/* Stats */}
         <div className="space-y-4">
           <Card>
             <CardContent className="p-6 text-center">
@@ -129,7 +101,6 @@ export default function DriverDetailPage({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
-      {/* Rides */}
       <Card>
         <CardHeader><CardTitle>سجل الرحلات ({rides.length})</CardTitle></CardHeader>
         <CardContent className="p-0">

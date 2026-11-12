@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { collection, onSnapshot, doc, updateDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Search, Eye, Ban, ShieldOff, ShieldCheck, CheckCircle, XCircle } from 'lucide-react';
-import type { Driver, DriverStatus, ApprovalStatus } from '@/lib/types';
+import type { DriverStatus, ApprovalStatus } from '@/lib/types';
 import { DRIVER_STATUS_LABELS, APPROVAL_STATUS_LABELS } from '@/lib/types';
+import { useDrivers } from '@/features/drivers/data/useDrivers';
+import { approveDriver, rejectDriver, toggleDriverBlock, toggleDriverDisable } from '@/features/drivers/application/driverService';
 import Link from 'next/link';
 
 const statusColor: Record<DriverStatus, 'success' | 'default' | 'warning' | 'destructive'> = {
@@ -22,32 +22,9 @@ const approvalColor: Record<ApprovalStatus, 'warning' | 'success' | 'destructive
 type FilterTab = 'all' | DriverStatus | 'pending_approval';
 
 export default function DriversPage() {
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const { drivers, loading } = useDrivers();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterTab>('all');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'drivers'), (snap) => {
-      const data = snap.docs.map((d) => {
-        const raw = d.data();
-        return {
-          uid: d.id, name: raw.name || '', email: raw.email || '', phone: raw.phone || '',
-          carModel: raw.carModel || '', carPlate: raw.carPlate || '',
-          pricePerKm: raw.pricePerKm || 0, status: (raw.status || 'offline') as DriverStatus,
-          location: raw.location ? { latitude: raw.location.latitude, longitude: raw.location.longitude } : null,
-          rating: raw.rating || 5.0, isBlocked: raw.isBlocked || false,
-          isDisabled: raw.isDisabled || false,
-          approvalStatus: (raw.approvalStatus || 'approved') as ApprovalStatus,
-          createdAt: (raw.createdAt as Timestamp)?.toDate(),
-          lastUpdated: (raw.lastUpdated as Timestamp)?.toDate(),
-        };
-      });
-      setDrivers(data);
-      setLoading(false);
-    });
-    return () => unsub();
-  }, []);
 
   const filtered = drivers.filter((d) => {
     const matchesSearch = d.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -57,25 +34,6 @@ export default function DriversPage() {
     if (filter === 'pending_approval') return d.approvalStatus === 'pending';
     return d.status === filter;
   });
-
-  const approveDriver = async (uid: string) => {
-    await updateDoc(doc(db, 'drivers', uid), { approvalStatus: 'approved' });
-  };
-  const rejectDriver = async (uid: string) => {
-    await updateDoc(doc(db, 'drivers', uid), { approvalStatus: 'rejected' });
-  };
-  const toggleBlock = async (uid: string, current: boolean) => {
-    try {
-      await updateDoc(doc(db, 'drivers', uid), { isBlocked: !current });
-    } catch (e) { console.error('Block error:', e); alert('فشل تحديث حالة الحظر'); }
-  };
-  const toggleDisable = async (uid: string, current: boolean) => {
-    try {
-      const updates: Record<string, unknown> = { isDisabled: !current };
-      if (!current) updates.status = 'offline';
-      await updateDoc(doc(db, 'drivers', uid), updates);
-    } catch (e) { console.error('Disable error:', e); alert('فشل تحديث حالة التعطيل'); }
-  };
 
   const tabs: { key: FilterTab; label: string; count: number }[] = [
     { key: 'all', label: 'الكل', count: drivers.length },
@@ -92,7 +50,6 @@ export default function DriversPage() {
         <p className="text-gray-500 mt-1">{drivers.length} سائق مسجل</p>
       </div>
 
-      {/* Filter Tabs */}
       <div className="flex gap-2 flex-wrap">
         {tabs.map((tab) => (
           <button key={tab.key} onClick={() => setFilter(tab.key)}
@@ -104,13 +61,11 @@ export default function DriversPage() {
         ))}
       </div>
 
-      {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
         <Input placeholder="بحث بالاسم أو الهاتف أو اللوحة..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" />
       </div>
 
-      {/* Table */}
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -163,10 +118,10 @@ export default function DriversPage() {
                             </Button>
                           </>
                         )}
-                        <Button variant="ghost" size="icon" onClick={() => toggleDisable(driver.uid, driver.isDisabled)} title={driver.isDisabled ? 'تفعيل' : 'تعطيل'}>
+                        <Button variant="ghost" size="icon" onClick={() => toggleDriverDisable(driver.uid, driver.isDisabled)} title={driver.isDisabled ? 'تفعيل' : 'تعطيل'}>
                           {driver.isDisabled ? <ShieldCheck className="h-4 w-4 text-green-600" /> : <ShieldOff className="h-4 w-4 text-yellow-600" />}
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => toggleBlock(driver.uid, driver.isBlocked)} title={driver.isBlocked ? 'رفع الحظر' : 'حظر'}>
+                        <Button variant="ghost" size="icon" onClick={() => toggleDriverBlock(driver.uid, driver.isBlocked)} title={driver.isBlocked ? 'رفع الحظر' : 'حظر'}>
                           <Ban className={`h-4 w-4 ${driver.isBlocked ? 'text-green-600' : 'text-red-600'}`} />
                         </Button>
                       </div>

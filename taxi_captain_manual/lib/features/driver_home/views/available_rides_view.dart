@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:geolocator/geolocator.dart';
-import '../../../core/services/ride_service.dart';
-import '../../../repositories/ride_repository.dart';
-import '../../../theme/app_theme.dart';
-import '../cubit/ride_cubit.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../core/di/service_locator.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/skeletons/skeletons.dart';
+import '../../rides/presentation/cubit/captain_ride_cubit.dart';
+import '../../rides/presentation/cubit/captain_ride_state.dart';
 import 'active_ride_view.dart';
 import 'ride_preview_view.dart';
 
@@ -24,22 +24,14 @@ class _AvailableRidesViewState extends State<AvailableRidesView> {
   @override
   void initState() {
     super.initState();
-    _rideCubit = CaptainRideCubit(RideRepository(RideService()));
-    _initLocationAndListen();
-  }
-
-  Future<void> _initLocationAndListen() async {
-    try {
-      Position pos = await Geolocator.getCurrentPosition();
-      _rideCubit.listenToPendingRides(driverLat: pos.latitude, driverLng: pos.longitude);
-    } catch (e) {
-      _rideCubit.listenToPendingRides();
-    }
+    _rideCubit = sl<CaptainRideCubit>();
+    // جلب الموقع والاستماع للرحلات عبر الـ Cubit — بدون Geolocator في الـ View
+    _rideCubit.startListeningWithLocation();
   }
 
   @override
   Widget build(BuildContext context) {
-    final driverId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final driverId = _rideCubit.currentDriverId;
 
     return BlocProvider.value(
       value: _rideCubit,
@@ -69,19 +61,25 @@ class _AvailableRidesViewState extends State<AvailableRidesView> {
                 );
               } else if (state is CaptainRideError) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(state.message, style: GoogleFonts.cairo())),
+                  SnackBar(
+                    content: Text(state.message, style: GoogleFonts.cairo()),
+                  ),
                 );
               }
             },
             builder: (context, state) {
               if (state is CaptainRideLoading || state is CaptainRideInitial) {
-                return const Center(child: CircularProgressIndicator(color: AppTheme.deepBurgundy));
+                return const RideListSkeleton(cardCount: 3);
               } else if (state is CaptainPendingRidesEmpty) {
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.search_off, size: 80.w, color: AppTheme.darkGrey),
+                      Icon(
+                        Icons.search_off,
+                        size: 80.w,
+                        color: AppTheme.darkGrey,
+                      ),
                       SizedBox(height: 16.h),
                       Text(
                         'لا توجد رحلات متاحة حالياً',
@@ -109,132 +107,162 @@ class _AvailableRidesViewState extends State<AvailableRidesView> {
                               ride: ride,
                               onAccept: () {
                                 Navigator.pop(context);
-                                context.read<CaptainRideCubit>().acceptRide(ride.rideId, driverId);
+                                context.read<CaptainRideCubit>().acceptRide(
+                                  ride.rideId,
+                                  driverId,
+                                );
                               },
                             ),
                           ),
                         );
                       },
                       child: Card(
-                      elevation: 4,
-                      shadowColor: AppTheme.charcoalBlack.withValues(alpha: 0.1),
-                      color: AppTheme.pureWhite,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16.r),
-                      ),
-                      margin: EdgeInsets.only(bottom: 16.h),
-                      child: Padding(
-                        padding: EdgeInsets.all(16.w),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.person, color: AppTheme.deepBurgundy, size: 24.w),
-                                SizedBox(width: 8.w),
-                                Expanded(
-                                  child: Text(
-                                    ride.customerName,
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 18.sp,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.charcoalBlack,
-                                    ),
+                        elevation: 4,
+                        shadowColor: AppTheme.charcoalBlack.withValues(
+                          alpha: 0.1,
+                        ),
+                        color: AppTheme.pureWhite,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16.r),
+                        ),
+                        margin: EdgeInsets.only(bottom: 16.h),
+                        child: Padding(
+                          padding: EdgeInsets.all(16.w),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.person,
+                                    color: AppTheme.deepBurgundy,
+                                    size: 24.w,
                                   ),
-                                ),
-                                Container(
-                                  padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.lightGrey,
-                                    borderRadius: BorderRadius.circular(20.r),
-                                  ),
-                                  child: Text(
-                                    '${ride.distanceKm.toStringAsFixed(1)} كم',
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 14.sp,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppTheme.deepBurgundy,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(color: AppTheme.lightGrey),
-                            Row(
-                              children: [
-                                Icon(Icons.my_location, color: Colors.green, size: 20.w),
-                                SizedBox(width: 8.w),
-                                Expanded(
-                                  child: Text(
-                                    ride.pickupAddress,
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 14.sp,
-                                      color: AppTheme.darkGrey,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 8.h),
-                            Row(
-                              children: [
-                                Icon(Icons.location_on, color: Colors.red, size: 20.w),
-                                SizedBox(width: 8.w),
-                                Expanded(
-                                  child: Text(
-                                    ride.destinationAddress,
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 14.sp,
-                                      color: AppTheme.darkGrey,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 16.h),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.deepBurgundy,
-                                  foregroundColor: AppTheme.pureWhite,
-                                  padding: EdgeInsets.symmetric(vertical: 12.h),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12.r),
-                                  ),
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => RidePreviewView(
-                                        ride: ride,
-                                        onAccept: () {
-                                          Navigator.pop(context);
-                                          context.read<CaptainRideCubit>().acceptRide(ride.rideId, driverId);
-                                        },
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Text(
+                                      ride.customerName,
+                                      style: GoogleFonts.cairo(
+                                        fontSize: 18.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.charcoalBlack,
                                       ),
                                     ),
-                                  );
-                                },
-                                child: Text(
-                                  'عرض تفاصيل الرحلة',
-                                  style: GoogleFonts.cairo(
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12.w,
+                                      vertical: 6.h,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.lightGrey,
+                                      borderRadius: BorderRadius.circular(20.r),
+                                    ),
+                                    child: Text(
+                                      '${ride.distanceKm.toStringAsFixed(1)} كم',
+                                      style: GoogleFonts.cairo(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.deepBurgundy,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Divider(color: AppTheme.lightGrey),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.my_location,
+                                    color: Colors.green,
+                                    size: 20.w,
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Text(
+                                      ride.pickupAddress,
+                                      style: GoogleFonts.cairo(
+                                        fontSize: 14.sp,
+                                        color: AppTheme.darkGrey,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 8.h),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on,
+                                    color: Colors.red,
+                                    size: 20.w,
+                                  ),
+                                  SizedBox(width: 8.w),
+                                  Expanded(
+                                    child: Text(
+                                      ride.destinationAddress,
+                                      style: GoogleFonts.cairo(
+                                        fontSize: 14.sp,
+                                        color: AppTheme.darkGrey,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 16.h),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.deepBurgundy,
+                                    foregroundColor: AppTheme.pureWhite,
+                                    padding: EdgeInsets.symmetric(
+                                      vertical: 12.h,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12.r),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => RidePreviewView(
+                                          ride: ride,
+                                          onAccept: () {
+                                            Navigator.pop(context);
+                                            context
+                                                .read<CaptainRideCubit>()
+                                                .acceptRide(
+                                                  ride.rideId,
+                                                  driverId,
+                                                );
+                                          },
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: Text(
+                                    'عرض تفاصيل الرحلة',
+                                    style: GoogleFonts.cairo(
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    );
+                    )
+                        .animate(delay: (index < 8 ? index * 80 : 0).ms)
+                        .fadeIn(duration: 300.ms)
+                        .slideY(begin: 0.2, duration: 300.ms);
                   },
                 );
               }

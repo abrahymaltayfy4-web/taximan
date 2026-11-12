@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
 import '../cubit/driver_auth_cubit.dart';
 import '../../driver_home/views/driver_home_view.dart';
 import 'driver_register_view.dart';
@@ -44,7 +44,10 @@ class _DriverLoginViewState extends State<DriverLoginView> {
             // Show error message
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message, style: GoogleFonts.cairo(color: Colors.white)),
+                content: Text(
+                  state.message,
+                  style: GoogleFonts.cairo(color: Colors.white),
+                ),
                 backgroundColor: Colors.red,
               ),
             );
@@ -61,7 +64,10 @@ class _DriverLoginViewState extends State<DriverLoginView> {
                   children: [
                     SizedBox(height: 40.h),
                     Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12.w,
+                        vertical: 6.h,
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.deepBurgundy.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8.r),
@@ -95,35 +101,59 @@ class _DriverLoginViewState extends State<DriverLoginView> {
                     SizedBox(height: 48.h),
 
                     // Email Field
-                    Text('البريد الإلكتروني', style: GoogleFonts.cairo(fontSize: 14.sp, fontWeight: FontWeight.w600)),
+                    Text(
+                      'البريد الإلكتروني',
+                      style: GoogleFonts.cairo(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     SizedBox(height: 8.h),
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
-                      validator: (v) => v!.isEmpty ? 'يرجى إدخال البريد الإلكتروني' : null,
+                      validator: (v) =>
+                          v!.isEmpty ? 'يرجى إدخال البريد الإلكتروني' : null,
                       decoration: const InputDecoration(
                         hintText: 'driver@rahaltaxi.com',
-                        prefixIcon: Icon(Icons.email_outlined, color: AppTheme.darkGrey),
+                        prefixIcon: Icon(
+                          Icons.email_outlined,
+                          color: AppTheme.darkGrey,
+                        ),
                       ),
                     ),
                     SizedBox(height: 24.h),
 
                     // Password Field
-                    Text('كلمة المرور', style: GoogleFonts.cairo(fontSize: 14.sp, fontWeight: FontWeight.w600)),
+                    Text(
+                      'كلمة المرور',
+                      style: GoogleFonts.cairo(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     SizedBox(height: 8.h),
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
-                      validator: (v) => v!.isEmpty ? 'يرجى إدخال كلمة المرور' : null,
+                      validator: (v) =>
+                          v!.isEmpty ? 'يرجى إدخال كلمة المرور' : null,
                       decoration: InputDecoration(
                         hintText: '••••••••',
-                        prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.darkGrey),
+                        prefixIcon: const Icon(
+                          Icons.lock_outline,
+                          color: AppTheme.darkGrey,
+                        ),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
                             color: AppTheme.darkGrey,
                           ),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                       ),
                     ),
@@ -131,14 +161,18 @@ class _DriverLoginViewState extends State<DriverLoginView> {
 
                     // Login Button with Loading State
                     state is DriverAuthLoading
-                        ? const Center(child: CircularProgressIndicator(color: AppTheme.deepBurgundy))
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: AppTheme.deepBurgundy,
+                            ),
+                          )
                         : ElevatedButton(
                             onPressed: () {
                               if (_formKey.currentState!.validate()) {
                                 context.read<DriverAuthCubit>().login(
-                                      _emailController.text.trim(),
-                                      _passwordController.text.trim(),
-                                    );
+                                  _emailController.text.trim(),
+                                  _passwordController.text.trim(),
+                                );
                               }
                             },
                             child: const Text('دخول الكابتن'),
@@ -149,14 +183,22 @@ class _DriverLoginViewState extends State<DriverLoginView> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('لا تمتلك حساب كابتن؟ ', style: GoogleFonts.cairo(fontSize: 14.sp, color: AppTheme.darkGrey)),
+                        Text(
+                          'لا تمتلك حساب كابتن؟ ',
+                          style: GoogleFonts.cairo(
+                            fontSize: 14.sp,
+                            color: AppTheme.darkGrey,
+                          ),
+                        ),
                         GestureDetector(
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => BlocProvider.value(
-                                  value: BlocProvider.of<DriverAuthCubit>(context),
+                                  value: BlocProvider.of<DriverAuthCubit>(
+                                    context,
+                                  ),
                                   child: const DriverRegisterView(),
                                 ),
                               ),

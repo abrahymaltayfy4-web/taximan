@@ -48,6 +48,9 @@ class DriverModel extends Equatable {
     );
   }
 
+  /// تُستخدم فقط عند إنشاء حساب جديد أو تحديث الملف الشخصي.
+  /// الحقول المالية (totalCommissionOwed, totalPaid) لا تُضمّن هنا
+  /// لأنها تُعدّل فقط عبر Admin SDK باستخدام FieldValue.increment.
   Map<String, dynamic> toJson() {
     return {
       'name': name,
@@ -61,8 +64,16 @@ class DriverModel extends Equatable {
       'rating': rating,
       'approvalStatus': approvalStatus,
       'isBlocked': isBlocked,
+    };
+  }
+
+  /// تُستخدم فقط عند التسجيل الأول — تضيف الحقول المالية بقيم ابتدائية.
+  Map<String, dynamic> toJsonForRegistration() {
+    return {
+      ...toJson(),
       'totalCommissionOwed': 0.0,
       'totalPaid': 0.0,
+      'createdAt': DateTime.now().toIso8601String(),
     };
   }
 
@@ -96,9 +107,17 @@ class DriverModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        uid, name, email, phone,
-        carModel, carPlate, pricePerKm,
-        status, location, rating,
-        approvalStatus, isBlocked,
-      ];
+    uid,
+    name,
+    email,
+    phone,
+    carModel,
+    carPlate,
+    pricePerKm,
+    status,
+    location,
+    rating,
+    approvalStatus,
+    isBlocked,
+  ];
 }

@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../theme/app_theme.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/di/service_locator.dart';
+import '../../../core/widgets/skeletons/skeletons.dart';
 import '../cubit/profile_cubit.dart';
-import '../repositories/profile_repository.dart';
-import '../services/profile_service.dart';
 
 class CaptainProfileView extends StatefulWidget {
   const CaptainProfileView({super.key});
@@ -35,12 +36,18 @@ class _CaptainProfileViewState extends State<CaptainProfileView> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => ProfileCubit(ProfileRepository(ProfileService()))..loadProfile(),
+      create: (context) => sl<ProfileCubit>()..loadProfile(),
       child: Scaffold(
         backgroundColor: AppTheme.creamBackground,
         appBar: AppBar(
           backgroundColor: AppTheme.deepBurgundy,
-          title: Text('الملف الشخصي', style: GoogleFonts.cairo(color: AppTheme.pureWhite, fontWeight: FontWeight.bold)),
+          title: Text(
+            'الملف الشخصي',
+            style: GoogleFonts.cairo(
+              color: AppTheme.pureWhite,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           centerTitle: true,
           iconTheme: const IconThemeData(color: AppTheme.pureWhite),
         ),
@@ -50,11 +57,18 @@ class _CaptainProfileViewState extends State<CaptainProfileView> {
             listener: (context, state) {
               if (state is ProfileUpdated) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('تم تحديث الملف الشخصي بنجاح', style: GoogleFonts.cairo())),
+                  SnackBar(
+                    content: Text(
+                      'تم تحديث الملف الشخصي بنجاح',
+                      style: GoogleFonts.cairo(),
+                    ),
+                  ),
                 );
               } else if (state is ProfileError) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(state.message, style: GoogleFonts.cairo())),
+                  SnackBar(
+                    content: Text(state.message, style: GoogleFonts.cairo()),
+                  ),
                 );
               } else if (state is ProfileLoaded) {
                 _nameController.text = state.driver.name;
@@ -66,7 +80,7 @@ class _CaptainProfileViewState extends State<CaptainProfileView> {
             },
             builder: (context, state) {
               if (state is ProfileLoading) {
-                return const Center(child: CircularProgressIndicator(color: AppTheme.deepBurgundy));
+                return const ProfileSkeleton();
               }
 
               return SingleChildScrollView(
@@ -78,18 +92,58 @@ class _CaptainProfileViewState extends State<CaptainProfileView> {
                       CircleAvatar(
                         radius: 50.r,
                         backgroundColor: AppTheme.lightGrey,
-                        child: Icon(Icons.person, size: 60.r, color: AppTheme.deepBurgundy),
-                      ),
+                        child: Icon(
+                          Icons.person,
+                          size: 60.r,
+                          color: AppTheme.deepBurgundy,
+                        ),
+                      )
+                          .animate()
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.2, duration: 300.ms),
                       SizedBox(height: 32.h),
-                      _buildTextField('الاسم', _nameController, Icons.person),
+                      _buildTextField('الاسم', _nameController, Icons.person)
+                          .animate(delay: 80.ms)
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.2, duration: 300.ms),
                       SizedBox(height: 16.h),
-                      _buildTextField('رقم الهاتف', _phoneController, Icons.phone, TextInputType.phone),
+                      _buildTextField(
+                        'رقم الهاتف',
+                        _phoneController,
+                        Icons.phone,
+                        TextInputType.phone,
+                      )
+                          .animate(delay: 160.ms)
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.2, duration: 300.ms),
                       SizedBox(height: 16.h),
-                      _buildTextField('موديل السيارة', _carModelController, Icons.directions_car),
+                      _buildTextField(
+                        'موديل السيارة',
+                        _carModelController,
+                        Icons.directions_car,
+                      )
+                          .animate(delay: 240.ms)
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.2, duration: 300.ms),
                       SizedBox(height: 16.h),
-                      _buildTextField('لوحة السيارة', _carPlateController, Icons.payment),
+                      _buildTextField(
+                        'لوحة السيارة',
+                        _carPlateController,
+                        Icons.payment,
+                      )
+                          .animate(delay: 320.ms)
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.2, duration: 300.ms),
                       SizedBox(height: 16.h),
-                      _buildTextField('سعر الكيلومتر (ريال)', _priceController, Icons.attach_money, const TextInputType.numberWithOptions(decimal: true)),
+                      _buildTextField(
+                        'سعر الكيلومتر (ريال)',
+                        _priceController,
+                        Icons.attach_money,
+                        const TextInputType.numberWithOptions(decimal: true),
+                      )
+                          .animate(delay: 400.ms)
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.2, duration: 300.ms),
                       SizedBox(height: 32.h),
                       SizedBox(
                         width: double.infinity,
@@ -97,24 +151,43 @@ class _CaptainProfileViewState extends State<CaptainProfileView> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.deepBurgundy,
                             padding: EdgeInsets.symmetric(vertical: 14.h),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
                           ),
                           onPressed: state is ProfileUpdating
                               ? null
                               : () {
                                   if (_formKey.currentState!.validate()) {
                                     context.read<ProfileCubit>().updateProfile(
-                                          name: _nameController.text,
-                                          phone: _phoneController.text,
-                                          carModel: _carModelController.text,
-                                          carPlate: _carPlateController.text,
-                                          pricePerKm: double.tryParse(_priceController.text) ?? 0.0,
-                                        );
+                                      name: _nameController.text,
+                                      phone: _phoneController.text,
+                                      carModel: _carModelController.text,
+                                      carPlate: _carPlateController.text,
+                                      pricePerKm:
+                                          double.tryParse(
+                                            _priceController.text,
+                                          ) ??
+                                          0.0,
+                                    );
                                   }
                                 },
                           child: state is ProfileUpdating
-                              ? SizedBox(height: 20.h, width: 20.h, child: const CircularProgressIndicator(color: AppTheme.pureWhite))
-                              : Text('حفظ التعديلات', style: GoogleFonts.cairo(color: AppTheme.pureWhite, fontSize: 16.sp, fontWeight: FontWeight.bold)),
+                              ? SizedBox(
+                                  height: 20.h,
+                                  width: 20.h,
+                                  child: const CircularProgressIndicator(
+                                    color: AppTheme.pureWhite,
+                                  ),
+                                )
+                              : Text(
+                                  'حفظ التعديلات',
+                                  style: GoogleFonts.cairo(
+                                    color: AppTheme.pureWhite,
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
                     ],
@@ -128,7 +201,12 @@ class _CaptainProfileViewState extends State<CaptainProfileView> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, IconData icon, [TextInputType type = TextInputType.text]) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller,
+    IconData icon, [
+    TextInputType type = TextInputType.text,
+  ]) {
     return TextFormField(
       controller: controller,
       keyboardType: type,
@@ -152,7 +230,8 @@ class _CaptainProfileViewState extends State<CaptainProfileView> {
         filled: true,
         fillColor: AppTheme.pureWhite,
       ),
-      validator: (value) => value == null || value.isEmpty ? 'هذا الحقل مطلوب' : null,
+      validator: (value) =>
+          value == null || value.isEmpty ? 'هذا الحقل مطلوب' : null,
     );
   }
 }

@@ -3,10 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart' hide TextDirection;
-import '../../../theme/app_theme.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/di/service_locator.dart';
+import '../../../core/widgets/skeletons/skeletons.dart';
 import '../cubit/ride_history_cubit.dart';
-import '../repositories/client_ride_history_repository.dart';
-import '../services/client_ride_history_service.dart';
 
 class RideHistoryView extends StatelessWidget {
   const RideHistoryView({Key? key}) : super(key: key);
@@ -14,7 +15,7 @@ class RideHistoryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => ClientRideHistoryCubit(ClientRideHistoryRepository(ClientRideHistoryService()))..loadHistory('today'),
+      create: (context) => sl<ClientRideHistoryCubit>()..loadHistory('today'),
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
@@ -32,12 +33,15 @@ class RideHistoryView extends StatelessWidget {
           body: BlocBuilder<ClientRideHistoryCubit, ClientRideHistoryState>(
             builder: (context, state) {
               if (state is ClientRideHistoryLoading) {
-                return const Center(child: CircularProgressIndicator(color: AppTheme.deepBurgundy));
+                return const RideListSkeleton();
               } else if (state is ClientRideHistoryError) {
                 return Center(
                   child: Text(
                     state.message,
-                    style: GoogleFonts.cairo(color: Colors.red, fontSize: 16.sp),
+                    style: GoogleFonts.cairo(
+                      color: Colors.red,
+                      fontSize: 16.sp,
+                    ),
                   ),
                 );
               } else if (state is ClientRideHistoryLoaded) {
@@ -51,43 +55,68 @@ class RideHistoryView extends StatelessWidget {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.history_toggle_off, size: 64.w, color: AppTheme.lightGrey),
+                                  Icon(
+                                    Icons.history_toggle_off,
+                                    size: 64.w,
+                                    color: AppTheme.lightGrey,
+                                  ),
                                   SizedBox(height: 16.h),
                                   Text(
                                     'لا توجد رحلات في هذه الفترة',
-                                    style: GoogleFonts.cairo(fontSize: 18.sp, color: AppTheme.darkGrey),
+                                    style: GoogleFonts.cairo(
+                                      fontSize: 18.sp,
+                                      color: AppTheme.darkGrey,
+                                    ),
                                   ),
                                 ],
                               ),
                             )
                           : ListView.builder(
-                              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 16.w,
+                                vertical: 8.h,
+                              ),
                               itemCount: state.rides.length,
                               itemBuilder: (context, index) {
                                 final ride = state.rides[index];
                                 return Card(
                                   margin: EdgeInsets.only(bottom: 12.h),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16.r),
+                                  ),
                                   elevation: 2,
-                                  shadowColor: AppTheme.charcoalBlack.withValues(alpha: 0.1),
+                                  shadowColor: AppTheme.charcoalBlack
+                                      .withValues(alpha: 0.1),
                                   color: AppTheme.pureWhite,
                                   child: Padding(
                                     padding: EdgeInsets.all(16.w),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
                                             Text(
-                                              DateFormat('yyyy/MM/dd - HH:mm').format(ride.createdAt),
-                                              style: GoogleFonts.cairo(color: AppTheme.darkGrey, fontSize: 12.sp),
+                                              DateFormat(
+                                                'yyyy/MM/dd - HH:mm',
+                                              ).format(ride.createdAt),
+                                              style: GoogleFonts.cairo(
+                                                color: AppTheme.darkGrey,
+                                                fontSize: 12.sp,
+                                              ),
                                             ),
                                             Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 8.w,
+                                                vertical: 4.h,
+                                              ),
                                               decoration: BoxDecoration(
-                                                color: AppTheme.deepBurgundy.withValues(alpha: 0.1),
-                                                borderRadius: BorderRadius.circular(8.r),
+                                                color: AppTheme.deepBurgundy
+                                                    .withValues(alpha: 0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(8.r),
                                               ),
                                               child: Text(
                                                 '${ride.fare.toStringAsFixed(2)} ريال',
@@ -112,12 +141,18 @@ class RideHistoryView extends StatelessWidget {
                                         SizedBox(height: 12.h),
                                         Row(
                                           children: [
-                                            Icon(Icons.circle, color: Colors.green, size: 12.w),
+                                            Icon(
+                                              Icons.circle,
+                                              color: Colors.green,
+                                              size: 12.w,
+                                            ),
                                             SizedBox(width: 8.w),
                                             Expanded(
                                               child: Text(
                                                 ride.pickupAddress,
-                                                style: GoogleFonts.cairo(fontSize: 14.sp),
+                                                style: GoogleFonts.cairo(
+                                                  fontSize: 14.sp,
+                                                ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
@@ -127,12 +162,18 @@ class RideHistoryView extends StatelessWidget {
                                         SizedBox(height: 8.h),
                                         Row(
                                           children: [
-                                            Icon(Icons.location_on, color: Colors.red, size: 12.w),
+                                            Icon(
+                                              Icons.location_on,
+                                              color: Colors.red,
+                                              size: 12.w,
+                                            ),
                                             SizedBox(width: 8.w),
                                             Expanded(
                                               child: Text(
                                                 ride.destinationAddress,
-                                                style: GoogleFonts.cairo(fontSize: 14.sp),
+                                                style: GoogleFonts.cairo(
+                                                  fontSize: 14.sp,
+                                                ),
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
@@ -142,18 +183,28 @@ class RideHistoryView extends StatelessWidget {
                                         SizedBox(height: 8.h),
                                         Row(
                                           children: [
-                                            Icon(Icons.map, color: AppTheme.darkGrey, size: 12.w),
+                                            Icon(
+                                              Icons.map,
+                                              color: AppTheme.darkGrey,
+                                              size: 12.w,
+                                            ),
                                             SizedBox(width: 8.w),
                                             Text(
                                               '${ride.distanceKm.toStringAsFixed(1)} كم',
-                                              style: GoogleFonts.cairo(fontSize: 14.sp, color: AppTheme.darkGrey),
+                                              style: GoogleFonts.cairo(
+                                                fontSize: 14.sp,
+                                                color: AppTheme.darkGrey,
+                                              ),
                                             ),
                                           ],
                                         ),
                                       ],
                                     ),
                                   ),
-                                );
+                                )
+                                    .animate(delay: (index < 8 ? index * 80 : 0).ms)
+                                    .fadeIn(duration: 300.ms)
+                                    .slideY(begin: 0.2, duration: 300.ms);
                               },
                             ),
                     ),
@@ -202,17 +253,20 @@ class RideHistoryView extends StatelessWidget {
           _FilterChip(
             label: 'اليوم',
             isSelected: currentFilter == 'today',
-            onTap: () => context.read<ClientRideHistoryCubit>().loadHistory('today'),
+            onTap: () =>
+                context.read<ClientRideHistoryCubit>().loadHistory('today'),
           ),
           _FilterChip(
             label: 'الأسبوع',
             isSelected: currentFilter == 'week',
-            onTap: () => context.read<ClientRideHistoryCubit>().loadHistory('week'),
+            onTap: () =>
+                context.read<ClientRideHistoryCubit>().loadHistory('week'),
           ),
           _FilterChip(
             label: 'الشهر',
             isSelected: currentFilter == 'month',
-            onTap: () => context.read<ClientRideHistoryCubit>().loadHistory('month'),
+            onTap: () =>
+                context.read<ClientRideHistoryCubit>().loadHistory('month'),
           ),
         ],
       ),
@@ -225,7 +279,11 @@ class _SummaryCard extends StatelessWidget {
   final String value;
   final IconData icon;
 
-  const _SummaryCard({required this.title, required this.value, required this.icon});
+  const _SummaryCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -246,9 +304,19 @@ class _SummaryCard extends StatelessWidget {
         children: [
           Icon(icon, color: AppTheme.deepBurgundy, size: 28.w),
           SizedBox(height: 8.h),
-          Text(title, style: GoogleFonts.cairo(fontSize: 14.sp, color: AppTheme.darkGrey)),
+          Text(
+            title,
+            style: GoogleFonts.cairo(fontSize: 14.sp, color: AppTheme.darkGrey),
+          ),
           SizedBox(height: 4.h),
-          Text(value, style: GoogleFonts.cairo(fontSize: 18.sp, fontWeight: FontWeight.bold, color: AppTheme.charcoalBlack)),
+          Text(
+            value,
+            style: GoogleFonts.cairo(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.charcoalBlack,
+            ),
+          ),
         ],
       ),
     );
@@ -260,7 +328,11 @@ class _FilterChip extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _FilterChip({required this.label, required this.isSelected, required this.onTap});
+  const _FilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {

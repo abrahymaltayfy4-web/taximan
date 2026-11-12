@@ -1,8 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { collection, addDoc, onSnapshot, query, orderBy, limit, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Send, Users, Car, User } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
-import type { AdminNotification, NotificationTarget } from '@/lib/types';
+import type { NotificationTarget } from '@/lib/types';
+import { useNotifications } from '@/features/notifications/data/useNotifications';
+import { sendNotification } from '@/features/notifications/application/notificationService';
 
 const targets: { key: NotificationTarget; label: string; icon: React.ElementType }[] = [
   { key: 'all_users', label: 'جميع العملاء', icon: Users },
@@ -19,8 +19,14 @@ const targets: { key: NotificationTarget; label: string; icon: React.ElementType
   { key: 'specific_driver', label: 'سائق محدد', icon: Car },
 ];
 
+const targetLabel: Record<NotificationTarget, string> = {
+  all_users: 'جميع العملاء', all_drivers: 'جميع السائقين',
+  specific_user: 'عميل محدد', specific_driver: 'سائق محدد',
+};
+
 export default function NotificationsPage() {
   const { user } = useAuth();
+  const { history } = useNotifications();
   const [target, setTarget] = useState<NotificationTarget>('all_users');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -28,43 +34,17 @@ export default function NotificationsPage() {
   const [targetName, setTargetName] = useState('');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
-  const [history, setHistory] = useState<AdminNotification[]>([]);
-
-  useEffect(() => {
-    const q = query(collection(db, 'notifications'), orderBy('sentAt', 'desc'), limit(20));
-    const unsub = onSnapshot(q, (snap) => {
-      setHistory(snap.docs.map((d) => {
-        const data = d.data();
-        return {
-          id: d.id, title: data.title, body: data.body, target: data.target,
-          targetId: data.targetId, targetName: data.targetName,
-          sentAt: (data.sentAt as Timestamp)?.toDate() || new Date(),
-          sentBy: data.sentBy || '',
-        };
-      }));
-    });
-    return () => unsub();
-  }, []);
 
   const handleSend = async () => {
     if (!title.trim() || !body.trim()) return;
     setSending(true);
     try {
-      // حفظ في Firestore (للإشعارات عند فتح التطبيق)
-      await addDoc(collection(db, 'notifications'), {
-        title, body, target, targetId: targetId || null, targetName: targetName || null,
-        sentAt: Timestamp.now(), sentBy: user?.email || 'admin',
+      await sendNotification({
+        title, body, target,
+        targetId: targetId || null,
+        targetName: targetName || null,
+        sentBy: user?.email || 'admin',
       });
-
-      // إرسال FCM (للإشعارات عند إغلاق التطبيق)
-      const res = await fetch('/api/send-notification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, body, target, targetId: targetId || null }),
-      });
-      const result = await res.json();
-      console.log('FCM result:', result);
-
       setTitle(''); setBody(''); setTargetId(''); setTargetName('');
       setSent(true);
       setTimeout(() => setSent(false), 3000);
@@ -75,11 +55,6 @@ export default function NotificationsPage() {
     setSending(false);
   };
 
-  const targetLabel: Record<NotificationTarget, string> = {
-    all_users: 'جميع العملاء', all_drivers: 'جميع السائقين',
-    specific_user: 'عميل محدد', specific_driver: 'سائق محدد',
-  };
-
   return (
     <div className="space-y-6">
       <div>
@@ -88,11 +63,9 @@ export default function NotificationsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Send Form */}
         <Card>
           <CardHeader><CardTitle>إرسال إشعار جديد</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            {/* Target Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">الهدف</label>
               <div className="grid grid-cols-2 gap-2">
@@ -108,7 +81,6 @@ export default function NotificationsPage() {
               </div>
             </div>
 
-            {/* Specific Target ID */}
             {(target === 'specific_user' || target === 'specific_driver') && (
               <div className="space-y-2">
                 <Input placeholder="اسم المستخدم" value={targetName} onChange={(e) => setTargetName(e.target.value)} />
@@ -136,7 +108,6 @@ export default function NotificationsPage() {
           </CardContent>
         </Card>
 
-        {/* History */}
         <Card>
           <CardHeader><CardTitle>سجل الإشعارات</CardTitle></CardHeader>
           <CardContent>

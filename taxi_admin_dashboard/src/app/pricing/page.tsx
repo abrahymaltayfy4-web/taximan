@@ -1,53 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { doc, onSnapshot, setDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Save, DollarSign, Percent, MapPin, Flag } from 'lucide-react';
-import type { PricingSettings } from '@/lib/types';
+import { usePricing } from '@/features/pricing/data/usePricing';
+import { savePricingSettings } from '@/features/pricing/application/pricingService';
 import { useAuth } from '@/lib/auth-context';
 
 export default function PricingPage() {
   const { user } = useAuth();
-  const [settings, setSettings] = useState<PricingSettings>({
-    defaultPricePerKm: 500,
-    minimumFare: 500,
-    commissionPercentage: 10,
-    baseFare: 0,
-    updatedAt: new Date(),
-    updatedBy: '',
-  });
+  const { settings, setSettings } = usePricing();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    const unsub = onSnapshot(doc(db, 'settings', 'pricing'), (snap) => {
-      if (snap.exists()) {
-        const d = snap.data();
-        setSettings({
-          defaultPricePerKm: d.defaultPricePerKm ?? d.pricePerKm ?? 500,
-          minimumFare: d.minimumFare ?? 500,
-          commissionPercentage: d.commissionPercentage ?? 10,
-          baseFare: d.baseFare ?? 0,
-          updatedAt: (d.updatedAt as Timestamp)?.toDate() || new Date(),
-          updatedBy: d.updatedBy || '',
-        });
-      }
-    });
-    return () => unsub();
-  }, []);
-
   const handleSave = async () => {
     setSaving(true);
-    await setDoc(doc(db, 'settings', 'pricing'), {
-      ...settings,
-      pricePerKm: settings.defaultPricePerKm, // اسم موحد للتطبيقات
-      updatedAt: Timestamp.now(),
-      updatedBy: user?.email || 'admin',
-    });
+    await savePricingSettings(settings, user?.email || 'admin');
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -78,15 +48,9 @@ export default function PricingPage() {
                 <label className="font-medium">{field.label}</label>
               </div>
               <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  step="0.5"
-                  min="0"
-                  value={settings[field.key]}
+                <Input type="number" step="0.5" min="0" value={settings[field.key]}
                   onChange={(e) => setSettings({ ...settings, [field.key]: parseFloat(e.target.value) || 0 })}
-                  className="text-lg font-bold text-center"
-                  dir="ltr"
-                />
+                  className="text-lg font-bold text-center" dir="ltr" />
                 <span className="text-sm text-gray-500 min-w-[50px]">{field.suffix}</span>
               </div>
             </CardContent>

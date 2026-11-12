@@ -1,153 +1,44 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { doc, onSnapshot, collection, query, where, orderBy, addDoc, updateDoc, Timestamp, increment } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Receipt, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useAuth } from '@/lib/auth-context';
+import { useDriver } from '@/features/drivers/data/useDrivers';
+import { useDriverTransactions } from '@/features/accounts/data/useDriverTransactions';
+import { recordPayment, recordCharge } from '@/features/accounts/application/accountService';
 import Link from 'next/link';
 import { use } from 'react';
-
-interface Transaction {
-  id: string;
-  type: 'commission' | 'payment';
-  amount: number;
-  rideFare: number;
-  note: string;
-  createdAt: Date;
-}
 
 export default function DriverAccountPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { user } = useAuth();
-  const [driverName, setDriverName] = useState('');
-  const [driverPhone, setDriverPhone] = useState('');
-  const [totalOwed, setTotalOwed] = useState(0);
-  const [totalPaid, setTotalPaid] = useState(0);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { driver } = useDriver(id);
+  const { transactions, loading } = useDriverTransactions(id);
 
-  // نافذة سند القبض/الصرف
   const [showModal, setShowModal] = useState<'payment' | 'charge' | null>(null);
   const [modalAmount, setModalAmount] = useState('');
   const [modalNote, setModalNote] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    // بيانات السائق
-    const unsubDriver = onSnapshot(doc(db, 'drivers', id), (snap) => {
-      if (snap.exists()) {
-        const d = snap.data();
-        setDriverName(d.name || '');
-        setDriverPhone(d.phone || '');
-        setTotalOwed(d.totalCommissionOwed || 0);
-        setTotalPaid(d.totalPaid || 0);
-      }
-    });
-
-    // المعاملات
-    const q = query(
-      collection(db, 'transactions'),
-      where('driverId', '==', id)
-    );
-    const unsubTx = onSnapshot(q, (snap) => {
-      const txList = snap.docs.map((d) => ({
-        id: d.id,
-        type: d.data().type || 'commission',
-        amount: d.data().amount || 0,
-        rideFare: d.data().rideFare || 0,
-        note: d.data().note || '',
-        createdAt: (d.data().createdAt as Timestamp)?.toDate() || new Date(),
-      }));
-      // ترتيب محلي بدل orderBy (لتجنب الحاجة لفهرس مركب)
-      txList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      setTransactions(txList);
-      setLoading(false);
-    }, (error) => {
-      console.error('Transactions error:', error);
-      setLoading(false);
-    });
-
-    return () => { unsubDriver(); unsubTx(); };
-  }, [id]);
+  const driverName = driver?.name || '';
+  const totalOwed = driver?.totalCommissionOwed || 0;
+  const totalPaid = driver?.totalPaid || 0;
 
   const handleSubmit = async () => {
     const amount = parseFloat(modalAmount);
     if (!amount || amount <= 0) return;
     setSaving(true);
-
     try {
       if (showModal === 'payment') {
-        // سند قبض — خصم من المستحقات
-        await addDoc(collection(db, 'transactions'), {
-          driverId: id,
-          driverName,
-          type: 'payment',
-          amount,
-          rideId: null,
-          rideFare: 0,
-          note: modalNote || `سداد عمولات — ${amount.toFixed(0)} ريال`,
-          createdAt: Timestamp.now(),
-          createdBy: user?.email || 'admin',
-        });
-
-        await updateDoc(doc(db, 'drivers', id), {
-          totalCommissionOwed: increment(-amount),
-          totalPaid: increment(amount),
-        });
-
-        // إرسال إشعار للسائق
-        await addDoc(collection(db, 'notifications'), {
-          title: '✅ تم تسجيل سداد',
-          body: `تم تسجيل سداد ${amount.toFixed(0)} ريال من عمولاتك. شكراً لك!`,
-          target: 'specific_driver',
-          targetId: id,
-          targetName: driverName,
-          sentAt: Timestamp.now(),
-          sentBy: user?.email || 'admin',
-        });
-
-        // إرسال FCM
-        try {
-          await fetch('/api/send-notification', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: '✅ تم تسجيل سداد',
-              body: `تم تسجيل سداد ${amount.toFixed(0)} ريال من عمولاتك. شكراً لك!`,
-              target: 'specific_driver',
-              targetId: id,
-            }),
-          });
-        } catch (_) {}
-
+        await recordPayment({ driverId: id, driverName, amount, note: modalNote, adminEmail: user?.email || 'admin' });
       } else if (showModal === 'charge') {
-        // سند صرف — إضافة على المستحقات
-        await addDoc(collection(db, 'transactions'), {
-          driverId: id,
-          driverName,
-          type: 'commission',
-          amount,
-          rideId: null,
-          rideFare: 0,
-          note: modalNote || `إضافة رسوم — ${amount.toFixed(0)} ريال`,
-          createdAt: Timestamp.now(),
-          createdBy: user?.email || 'admin',
-        });
-
-        await updateDoc(doc(db, 'drivers', id), {
-          totalCommissionOwed: increment(amount),
-        });
+        await recordCharge({ driverId: id, driverName, amount, note: modalNote, adminEmail: user?.email || 'admin' });
       }
-
-      setShowModal(null);
-      setModalAmount('');
-      setModalNote('');
+      setShowModal(null); setModalAmount(''); setModalNote('');
     } catch (e) {
       console.error(e);
       alert('حدث خطأ');
@@ -157,16 +48,14 @@ export default function DriverAccountPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="space-y-6">
-      {/* العنوان */}
       <div className="flex items-center gap-3">
         <Link href="/accounts"><Button variant="ghost" size="icon"><ArrowRight className="h-5 w-5" /></Button></Link>
         <div>
           <h1 className="text-2xl font-bold">{driverName}</h1>
-          <p className="text-gray-500" dir="ltr">{driverPhone}</p>
+          <p className="text-gray-500" dir="ltr">{driver?.phone || ''}</p>
         </div>
       </div>
 
-      {/* بطاقات الرصيد */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="border-r-4 border-r-red-500">
           <CardContent className="p-6 text-center">
@@ -188,7 +77,6 @@ export default function DriverAccountPage({ params }: { params: Promise<{ id: st
         </Card>
       </div>
 
-      {/* سجل المعاملات */}
       <Card>
         <CardHeader><CardTitle>📋 سجل المعاملات</CardTitle></CardHeader>
         <CardContent>
@@ -217,7 +105,6 @@ export default function DriverAccountPage({ params }: { params: Promise<{ id: st
         </CardContent>
       </Card>
 
-      {/* Modal سند القبض/الصرف */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4">

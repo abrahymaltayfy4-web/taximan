@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../../../theme/app_theme.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/di/service_locator.dart';
+import '../../../core/widgets/skeletons/skeletons.dart';
 import '../cubit/customer_profile_cubit.dart';
-import '../repositories/customer_profile_repository.dart';
-import '../services/customer_profile_service.dart';
 import '../../ride_history/views/ride_history_view.dart';
 import '../../auth/views/login_view.dart';
 
@@ -16,7 +16,7 @@ class CustomerProfileView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => CustomerProfileCubit(CustomerProfileRepository(CustomerProfileService()))..loadProfile(),
+      create: (context) => sl<CustomerProfileCubit>()..loadProfile(),
       child: Directionality(
         textDirection: TextDirection.rtl,
         child: Scaffold(
@@ -33,7 +33,10 @@ class CustomerProfileView extends StatelessWidget {
             ),
             centerTitle: true,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: AppTheme.pureWhite),
+              icon: const Icon(
+                Icons.arrow_back_ios_new,
+                color: AppTheme.pureWhite,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -42,7 +45,10 @@ class CustomerProfileView extends StatelessWidget {
               if (state is CustomerProfileUpdated) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('تم تحديث البيانات بنجاح', style: GoogleFonts.cairo()),
+                    content: Text(
+                      'تم تحديث البيانات بنجاح',
+                      style: GoogleFonts.cairo(),
+                    ),
                     backgroundColor: Colors.green,
                   ),
                 );
@@ -57,9 +63,7 @@ class CustomerProfileView extends StatelessWidget {
             },
             builder: (context, state) {
               if (state is CustomerProfileLoading) {
-                return const Center(
-                  child: CircularProgressIndicator(color: AppTheme.deepBurgundy),
-                );
+                return const ProfileSkeleton();
               }
 
               if (state is CustomerProfileLoaded) {
@@ -71,21 +75,10 @@ class CustomerProfileView extends StatelessWidget {
               }
 
               if (state is CustomerProfileUpdating) {
-                return const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(color: AppTheme.deepBurgundy),
-                      SizedBox(height: 16),
-                      Text('جاري التحديث...'),
-                    ],
-                  ),
-                );
+                return const ProfileSkeleton();
               }
 
-              return const Center(
-                child: CircularProgressIndicator(color: AppTheme.deepBurgundy),
-              );
+              return const ProfileSkeleton();
             },
           ),
         ),
@@ -166,7 +159,9 @@ class _ProfileContentState extends State<_ProfileContent> {
                 children: [
                   CircleAvatar(
                     radius: 50.r,
-                    backgroundColor: AppTheme.deepBurgundy.withValues(alpha: 0.1),
+                    backgroundColor: AppTheme.deepBurgundy.withValues(
+                      alpha: 0.1,
+                    ),
                     child: Icon(
                       Icons.person,
                       size: 50.sp,
@@ -192,7 +187,10 @@ class _ProfileContentState extends State<_ProfileContent> {
                   ),
                 ],
               ),
-            ),
+            )
+                .animate()
+                .fadeIn(duration: 300.ms)
+                .slideY(begin: 0.2, duration: 300.ms),
             SizedBox(height: 24.h),
 
             // ===== بيانات الحساب =====
@@ -261,7 +259,8 @@ class _ProfileContentState extends State<_ProfileContent> {
                     controller: _phoneController,
                     enabled: _isEditing,
                     keyboardType: TextInputType.phone,
-                    validator: (v) => v!.isEmpty ? 'يرجى إدخال رقم الهاتف' : null,
+                    validator: (v) =>
+                        v!.isEmpty ? 'يرجى إدخال رقم الهاتف' : null,
                   ),
 
                   if (_isEditing) ...[
@@ -273,9 +272,9 @@ class _ProfileContentState extends State<_ProfileContent> {
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
                             context.read<CustomerProfileCubit>().updateProfile(
-                                  name: _nameController.text.trim(),
-                                  phone: _phoneController.text.trim(),
-                                );
+                              name: _nameController.text.trim(),
+                              phone: _phoneController.text.trim(),
+                            );
                             setState(() => _isEditing = false);
                           }
                         },
@@ -298,7 +297,10 @@ class _ProfileContentState extends State<_ProfileContent> {
                   ],
                 ],
               ),
-            ),
+            )
+                .animate(delay: 80.ms)
+                .fadeIn(duration: 300.ms)
+                .slideY(begin: 0.2, duration: 300.ms),
             SizedBox(height: 24.h),
 
             // ===== قائمة الخيارات =====
@@ -322,7 +324,9 @@ class _ProfileContentState extends State<_ProfileContent> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const RideHistoryView()),
+                        MaterialPageRoute(
+                          builder: (context) => const RideHistoryView(),
+                        ),
                       );
                     },
                   ),
@@ -334,7 +338,10 @@ class _ProfileContentState extends State<_ProfileContent> {
                   ),
                 ],
               ),
-            ),
+            )
+                .animate(delay: 160.ms)
+                .fadeIn(duration: 300.ms)
+                .slideY(begin: 0.2, duration: 300.ms),
             SizedBox(height: 24.h),
 
             // ===== زر تسجيل الخروج =====
@@ -343,11 +350,13 @@ class _ProfileContentState extends State<_ProfileContent> {
               height: 50.h,
               child: OutlinedButton.icon(
                 onPressed: () async {
-                  await FirebaseAuth.instance.signOut();
+                  await context.read<CustomerProfileCubit>().signOut();
                   if (context.mounted) {
                     Navigator.pushAndRemoveUntil(
                       context,
-                      MaterialPageRoute(builder: (context) => const LoginView()),
+                      MaterialPageRoute(
+                        builder: (context) => const LoginView(),
+                      ),
                       (route) => false,
                     );
                   }
@@ -389,10 +398,7 @@ class _ProfileContentState extends State<_ProfileContent> {
       enabled: enabled,
       keyboardType: keyboardType,
       validator: validator,
-      style: GoogleFonts.cairo(
-        fontSize: 15.sp,
-        color: AppTheme.charcoalBlack,
-      ),
+      style: GoogleFonts.cairo(fontSize: 15.sp, color: AppTheme.charcoalBlack),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: GoogleFonts.cairo(
@@ -401,7 +407,9 @@ class _ProfileContentState extends State<_ProfileContent> {
         ),
         prefixIcon: Icon(icon, color: AppTheme.deepBurgundy, size: 22.sp),
         filled: true,
-        fillColor: enabled ? AppTheme.creamBackground : AppTheme.lightGrey.withValues(alpha: 0.5),
+        fillColor: enabled
+            ? AppTheme.creamBackground
+            : AppTheme.lightGrey.withValues(alpha: 0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
           borderSide: BorderSide.none,
@@ -412,7 +420,10 @@ class _ProfileContentState extends State<_ProfileContent> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
-          borderSide: const BorderSide(color: AppTheme.deepBurgundy, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppTheme.deepBurgundy,
+            width: 1.5,
+          ),
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12.r),
@@ -485,7 +496,11 @@ class _ProfileContentState extends State<_ProfileContent> {
           color: AppTheme.charcoalBlack,
         ),
       ),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppTheme.darkGrey),
+      trailing: const Icon(
+        Icons.arrow_forward_ios,
+        size: 16,
+        color: AppTheme.darkGrey,
+      ),
       onTap: onTap,
     );
   }

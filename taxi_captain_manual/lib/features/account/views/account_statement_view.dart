@@ -1,123 +1,120 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import '../../../theme/app_theme.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/di/service_locator.dart';
+import '../../../core/widgets/skeletons/skeletons.dart';
+import '../cubit/account_cubit.dart';
 
-class AccountStatementView extends StatefulWidget {
+class AccountStatementView extends StatelessWidget {
   const AccountStatementView({super.key});
 
   @override
-  State<AccountStatementView> createState() => _AccountStatementViewState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<AccountCubit>()..loadAccount(),
+      child: const _AccountStatementBody(),
+    );
+  }
 }
 
-class _AccountStatementViewState extends State<AccountStatementView> {
-  final _firestore = FirebaseFirestore.instance;
-  final _uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-
-  double _totalOwed = 0.0;
-  double _totalPaid = 0.0;
-  List<Map<String, dynamic>> _transactions = [];
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    // جلب بيانات السائق
-    final driverDoc = await _firestore.collection('drivers').doc(_uid).get();
-    if (driverDoc.exists) {
-      _totalOwed = (driverDoc.data()?['totalCommissionOwed'] ?? 0.0).toDouble();
-      _totalPaid = (driverDoc.data()?['totalPaid'] ?? 0.0).toDouble();
-    }
-
-    // جلب المعاملات
-    final txSnap = await _firestore
-        .collection('transactions')
-        .where('driverId', isEqualTo: _uid)
-        .get();
-
-    _transactions = txSnap.docs.map((d) {
-      final data = d.data();
-      return {
-        'type': data['type'] ?? 'commission',
-        'amount': (data['amount'] ?? 0.0).toDouble(),
-        'note': data['note'] ?? '',
-        'rideFare': (data['rideFare'] ?? 0.0).toDouble(),
-        'createdAt': (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      };
-    }).toList();
-
-    // ترتيب محلي
-    _transactions.sort((a, b) =>
-        (b['createdAt'] as DateTime).compareTo(a['createdAt'] as DateTime));
-
-    if (mounted) setState(() => _loading = false);
-  }
+class _AccountStatementBody extends StatelessWidget {
+  const _AccountStatementBody();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.creamBackground,
       appBar: AppBar(
-        title: Text('كشف الحساب', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+        title: Text(
+          'كشف الحساب',
+          style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: AppTheme.deepBurgundy,
         foregroundColor: Colors.white,
       ),
-      body: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppTheme.deepBurgundy))
-            : RefreshIndicator(
-                onRefresh: () async {
-                  setState(() => _loading = true);
-                  await _loadData();
-                },
-                child: ListView(
-                  padding: EdgeInsets.all(16.w),
-                  children: [
-                    // بطاقات الملخص
-                    Row(
-                      children: [
-                        Expanded(child: _summaryCard(
-                          'عمولات مستحقة',
-                          '${_totalOwed.toStringAsFixed(0)} ريال',
-                          Icons.account_balance_wallet,
-                          Colors.red.shade700,
-                        )),
-                        SizedBox(width: 12.w),
-                        Expanded(child: _summaryCard(
-                          'إجمالي المدفوع',
-                          '${_totalPaid.toStringAsFixed(0)} ريال',
-                          Icons.check_circle,
-                          Colors.green.shade700,
-                        )),
-                      ],
-                    ),
-                    SizedBox(height: 20.h),
+      body: BlocBuilder<AccountCubit, AccountState>(
+        builder: (context, state) {
+          if (state is AccountLoading || state is AccountInitial) {
+            return const AccountSkeleton();
+          }
+          if (state is AccountError) {
+            return Center(
+              child: Text(state.message, style: GoogleFonts.cairo()),
+            );
+          }
+          if (state is AccountLoaded) {
+            return _buildContent(context, state.data);
+          }
+          return const SizedBox();
+        },
+      ),
+    );
+  }
 
-                    // عنوان السجل
-                    Text(
-                      'سجل المعاملات',
-                      style: GoogleFonts.cairo(fontSize: 18.sp, fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 8.h),
-
-                    if (_transactions.isEmpty)
-                      Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(40.w),
-                          child: Text('لا توجد معاملات بعد', style: GoogleFonts.cairo(color: Colors.grey)),
-                        ),
-                      )
-                    else
-                      ..._transactions.map((tx) => _transactionCard(tx)),
-                  ],
+  Widget _buildContent(BuildContext context, AccountData data) {
+    return RefreshIndicator(
+      onRefresh: () => context.read<AccountCubit>().loadAccount(),
+      child: ListView(
+        padding: EdgeInsets.all(16.w),
+        children: [
+          // بطاقات الملخص
+          Row(
+            children: [
+              Expanded(
+                child: _summaryCard(
+                  'عمولات مستحقة',
+                  '${data.totalCommissionOwed.toStringAsFixed(0)} ريال',
+                  Icons.account_balance_wallet,
+                  Colors.red.shade700,
                 ),
               ),
+              SizedBox(width: 12.w),
+              Expanded(
+                child: _summaryCard(
+                  'إجمالي المدفوع',
+                  '${data.totalPaid.toStringAsFixed(0)} ريال',
+                  Icons.check_circle,
+                  Colors.green.shade700,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20.h),
+
+          Text(
+            'سجل المعاملات',
+            style: GoogleFonts.cairo(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8.h),
+
+          if (data.transactions.isEmpty)
+            Center(
+              child: Padding(
+                padding: EdgeInsets.all(40.w),
+                child: Text(
+                  'لا توجد معاملات بعد',
+                  style: GoogleFonts.cairo(color: Colors.grey),
+                ),
+              ),
+            )
+          else
+            ...data.transactions.asMap().entries.map((entry) {
+              final index = entry.key;
+              final tx = entry.value;
+              return _transactionCard(tx)
+                  .animate(delay: (index < 8 ? index * 80 : 0).ms)
+                  .fadeIn(duration: 300.ms)
+                  .slideY(begin: 0.2, duration: 300.ms);
+            }),
+        ],
+      ),
     );
   }
 
@@ -127,15 +124,34 @@ class _AccountStatementViewState extends State<AccountStatementView> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12.r),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         children: [
           Icon(icon, color: color, size: 28.sp),
           SizedBox(height: 8.h),
-          Text(title, style: GoogleFonts.cairo(fontSize: 12.sp, color: Colors.grey.shade600)),
+          Text(
+            title,
+            style: GoogleFonts.cairo(
+              fontSize: 12.sp,
+              color: Colors.grey.shade600,
+            ),
+          ),
           SizedBox(height: 4.h),
-          Text(value, style: GoogleFonts.cairo(fontSize: 18.sp, fontWeight: FontWeight.bold, color: color)),
+          Text(
+            value,
+            style: GoogleFonts.cairo(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
@@ -143,7 +159,10 @@ class _AccountStatementViewState extends State<AccountStatementView> {
 
   Widget _transactionCard(Map<String, dynamic> tx) {
     final isCommission = tx['type'] == 'commission';
-    final date = DateFormat('yyyy/MM/dd — hh:mm a', 'ar').format(tx['createdAt'] as DateTime);
+    final date = DateFormat(
+      'yyyy/MM/dd — hh:mm a',
+      'ar',
+    ).format(tx['createdAt'] as DateTime);
 
     return Container(
       margin: EdgeInsets.only(bottom: 8.h),
@@ -151,17 +170,21 @@ class _AccountStatementViewState extends State<AccountStatementView> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10.r),
-        border: Border(right: BorderSide(
-          color: isCommission ? Colors.red : Colors.green,
-          width: 4,
-        )),
+        border: Border(
+          right: BorderSide(
+            color: isCommission ? Colors.red : Colors.green,
+            width: 4,
+          ),
+        ),
       ),
       child: Row(
         children: [
           Container(
             padding: EdgeInsets.all(8.w),
             decoration: BoxDecoration(
-              color: (isCommission ? Colors.red : Colors.green).withValues(alpha: 0.1),
+              color: (isCommission ? Colors.red : Colors.green).withValues(
+                alpha: 0.1,
+              ),
               borderRadius: BorderRadius.circular(8.r),
             ),
             child: Icon(
@@ -177,10 +200,16 @@ class _AccountStatementViewState extends State<AccountStatementView> {
               children: [
                 Text(
                   tx['note'] as String,
-                  style: GoogleFonts.cairo(fontSize: 13.sp, fontWeight: FontWeight.w600),
+                  style: GoogleFonts.cairo(
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 SizedBox(height: 2.h),
-                Text(date, style: GoogleFonts.cairo(fontSize: 11.sp, color: Colors.grey)),
+                Text(
+                  date,
+                  style: GoogleFonts.cairo(fontSize: 11.sp, color: Colors.grey),
+                ),
               ],
             ),
           ),

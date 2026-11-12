@@ -63,7 +63,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '847283164423',
     projectId: 'taximanual',
     storageBucket: 'taximanual.firebasestorage.app',
-    iosClientId: '847283164423-7f5v95vhn1o1qi97u5oc3ss0d4ma5mj1.apps.googleusercontent.com',
+    iosClientId:
+        '847283164423-7f5v95vhn1o1qi97u5oc3ss0d4ma5mj1.apps.googleusercontent.com',
     iosBundleId: 'com.taxicaptain.taxiCaptainManual',
   );
 }

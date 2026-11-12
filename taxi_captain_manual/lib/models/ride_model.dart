@@ -75,7 +75,6 @@ class RideModel extends Equatable {
     );
   }
 
-
   Map<String, dynamic> toJson() {
     return {
       'customerId': customerId,
@@ -145,24 +144,24 @@ class RideModel extends Equatable {
 
   @override
   List<Object?> get props => [
-        rideId,
-        customerId,
-        customerName,
-        customerPhone,
-        driverId,
-        driverName,
-        driverPhone,
-        driverCarModel,
-        driverCarPlate,
-        pickupLocation,
-        pickupAddress,
-        destinationLocation,
-        destinationAddress,
-        status,
-        fare,
-        distanceKm,
-        createdAt,
-        acceptedAt,
-        completedAt,
-      ];
+    rideId,
+    customerId,
+    customerName,
+    customerPhone,
+    driverId,
+    driverName,
+    driverPhone,
+    driverCarModel,
+    driverCarPlate,
+    pickupLocation,
+    pickupAddress,
+    destinationLocation,
+    destinationAddress,
+    status,
+    fare,
+    distanceKm,
+    createdAt,
+    acceptedAt,
+    completedAt,
+  ];
 }

@@ -1,13 +1,15 @@
-// lib/features/client_auth/repositories/client_auth_repository.dart
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../domain/repositories/client_auth_repository_contract.dart';
 
-class ClientAuthRepository {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+class ClientAuthRepository implements ClientAuthRepositoryContract {
+  final FirebaseAuth _auth;
+  final FirebaseFirestore _firestore;
 
-  // تسجيل حساب عميل جديد
-  Future<User?> signUpWithEmailAndPassword({
+  ClientAuthRepository(this._auth, this._firestore);
+
+  @override
+  Future<String?> signUp({
     required String name,
     required String email,
     required String password,
@@ -18,11 +20,8 @@ class ClientAuthRepository {
         email: email,
         password: password,
       );
-
       User? user = credential.user;
-
       if (user != null) {
-        // حفظ بيانات العميل في مجموعة clients داخل Firestore
         await _firestore.collection('clients').doc(user.uid).set({
           'uid': user.uid,
           'name': name,
@@ -31,43 +30,34 @@ class ClientAuthRepository {
           'createdAt': FieldValue.serverTimestamp(),
         });
       }
-
-      return user;
+      return user?.uid;
     } catch (e) {
       throw Exception(e.toString());
     }
   }
 
-  // تسجيل دخول العميل
-  Future<User?> signInWithEmailAndPassword({
-    required String email,
-    required String password,
-  }) async {
+  @override
+  Future<String?> signIn({required String email, required String password}) async {
     try {
       UserCredential credential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-
       final user = credential.user;
       if (user != null) {
-        // التحقق من أن الحساب عميل وليس كابتن
         final clientDoc = await _firestore.collection('clients').doc(user.uid).get();
         if (!clientDoc.exists) {
-          // هذا حساب كابتن وليس عميل — نرفض الدخول
           await _auth.signOut();
           throw Exception('هذا الحساب مسجل ككابتن. يرجى استخدام تطبيق الكابتن');
         }
       }
-
-      return user;
+      return user?.uid;
     } catch (e) {
       throw Exception(e.toString());
     }
   }
 
-
-  // تسجيل الخروج
+  @override
   Future<void> signOut() async {
     await _auth.signOut();
   }

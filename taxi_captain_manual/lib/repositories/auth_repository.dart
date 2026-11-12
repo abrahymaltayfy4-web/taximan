@@ -1,8 +1,9 @@
-// lib/repositories/auth_repository.dart
 import 'package:firebase_auth/firebase_auth.dart';
-import '../core/services/firebase_auth_service.dart';
+import '../core/infrastructure/firebase_auth_service.dart';
+import '../features/driver_auth/domain/repositories/auth_repository_contract.dart';
 
-class AuthRepository {
+/// تنفيذ AuthRepository — Data Layer
+class AuthRepository implements AuthRepositoryContract {
   final FirebaseAuthService _authService;
 
   AuthRepository(this._authService);
@@ -11,20 +12,31 @@ class AuthRepository {
 
   Stream<User?> get authStateChanges => _authService.authStateChanges;
 
-  Future<UserCredential> signInWithEmail({
+  @override
+  Future<String> signInWithEmail({
     required String email,
     required String password,
   }) async {
-    return await _authService.signInWithEmail(email: email, password: password);
+    final credential = await _authService.signInWithEmail(
+      email: email,
+      password: password,
+    );
+    return credential.user!.uid;
   }
 
-  Future<UserCredential> registerWithEmail({
+  @override
+  Future<String> registerWithEmail({
     required String email,
     required String password,
   }) async {
-    return await _authService.registerWithEmail(email: email, password: password);
+    final credential = await _authService.registerWithEmail(
+      email: email,
+      password: password,
+    );
+    return credential.user!.uid;
   }
 
+  @override
   Future<void> signOut() async {
     await _authService.signOut();
   }

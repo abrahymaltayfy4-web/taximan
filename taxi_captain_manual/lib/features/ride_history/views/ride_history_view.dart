@@ -4,10 +4,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import '../../../theme/app_theme.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/di/service_locator.dart';
+import '../../../core/widgets/skeletons/skeletons.dart';
 import '../cubit/ride_history_cubit.dart';
-import '../repositories/ride_history_repository.dart';
-import '../services/ride_history_service.dart';
 
 class RideHistoryView extends StatelessWidget {
   const RideHistoryView({super.key});
@@ -15,12 +16,18 @@ class RideHistoryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => RideHistoryCubit(RideHistoryRepository(RideHistoryService()))..loadRideHistory('اليوم'),
+      create: (context) => sl<RideHistoryCubit>()..loadRideHistory('اليوم'),
       child: Scaffold(
         backgroundColor: AppTheme.creamBackground,
         appBar: AppBar(
           backgroundColor: AppTheme.deepBurgundy,
-          title: Text('سجل الرحلات', style: GoogleFonts.cairo(color: AppTheme.pureWhite, fontWeight: FontWeight.bold)),
+          title: Text(
+            'سجل الرحلات',
+            style: GoogleFonts.cairo(
+              color: AppTheme.pureWhite,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           centerTitle: true,
           iconTheme: const IconThemeData(color: AppTheme.pureWhite),
         ),
@@ -29,9 +36,14 @@ class RideHistoryView extends StatelessWidget {
           child: BlocBuilder<RideHistoryCubit, RideHistoryState>(
             builder: (context, state) {
               if (state is RideHistoryLoading) {
-                return const Center(child: CircularProgressIndicator(color: AppTheme.deepBurgundy));
+                return const RideListSkeleton(cardCount: 5);
               } else if (state is RideHistoryError) {
-                return Center(child: Text(state.message, style: GoogleFonts.cairo(color: Colors.red)));
+                return Center(
+                  child: Text(
+                    state.message,
+                    style: GoogleFonts.cairo(color: Colors.red),
+                  ),
+                );
               } else if (state is RideHistoryLoaded) {
                 return Column(
                   children: [
@@ -43,20 +55,44 @@ class RideHistoryView extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
-                              _buildSummaryCard(Icons.directions_car, state.totalRides.toString(), 'الرحلات'),
-                              _buildSummaryCard(Icons.attach_money, '${state.totalFare.toStringAsFixed(1)} ر.س', 'الأرباح'),
-                              _buildSummaryCard(Icons.straighten, '${state.totalDistance.toStringAsFixed(1)} كم', 'المسافة'),
+                              _buildSummaryCard(
+                                Icons.directions_car,
+                                state.totalRides.toString(),
+                                'الرحلات',
+                              ),
+                              _buildSummaryCard(
+                                Icons.attach_money,
+                                '${state.totalFare.toStringAsFixed(1)} ر.س',
+                                'الأرباح',
+                              ),
+                              _buildSummaryCard(
+                                Icons.straighten,
+                                '${state.totalDistance.toStringAsFixed(1)} كم',
+                                'المسافة',
+                              ),
                             ],
                           ),
                           SizedBox(height: 16.h),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              _buildFilterChip(context, 'اليوم', state.filterType),
+                              _buildFilterChip(
+                                context,
+                                'اليوم',
+                                state.filterType,
+                              ),
                               SizedBox(width: 8.w),
-                              _buildFilterChip(context, 'الأسبوع', state.filterType),
+                              _buildFilterChip(
+                                context,
+                                'الأسبوع',
+                                state.filterType,
+                              ),
                               SizedBox(width: 8.w),
-                              _buildFilterChip(context, 'الشهر', state.filterType),
+                              _buildFilterChip(
+                                context,
+                                'الشهر',
+                                state.filterType,
+                              ),
                             ],
                           ),
                         ],
@@ -64,52 +100,110 @@ class RideHistoryView extends StatelessWidget {
                     ),
                     Expanded(
                       child: state.rides.isEmpty
-                          ? Center(child: Text('لا توجد رحلات', style: GoogleFonts.cairo(fontSize: 18.sp)))
+                          ? Center(
+                              child: Text(
+                                'لا توجد رحلات',
+                                style: GoogleFonts.cairo(fontSize: 18.sp),
+                              ),
+                            )
                           : ListView.builder(
                               padding: EdgeInsets.all(16.w),
                               itemCount: state.rides.length,
                               itemBuilder: (context, index) {
                                 final ride = state.rides[index];
-                                final date = DateFormat('yyyy/MM/dd hh:mm a').format(ride.createdAt);
+                                final date = DateFormat(
+                                  'yyyy/MM/dd hh:mm a',
+                                ).format(ride.createdAt);
                                 return Card(
                                   color: AppTheme.pureWhite,
                                   elevation: 2,
                                   margin: EdgeInsets.only(bottom: 12.h),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12.r),
+                                  ),
                                   child: Padding(
                                     padding: EdgeInsets.all(12.w),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Text(date, style: GoogleFonts.cairo(color: AppTheme.darkGrey, fontSize: 12.sp)),
-                                            Text('${ride.fare.toStringAsFixed(2)} ر.س', style: GoogleFonts.cairo(color: AppTheme.deepBurgundy, fontWeight: FontWeight.bold)),
+                                            Text(
+                                              date,
+                                              style: GoogleFonts.cairo(
+                                                color: AppTheme.darkGrey,
+                                                fontSize: 12.sp,
+                                              ),
+                                            ),
+                                            Text(
+                                              '${ride.fare.toStringAsFixed(2)} ر.س',
+                                              style: GoogleFonts.cairo(
+                                                color: AppTheme.deepBurgundy,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                         SizedBox(height: 8.h),
-                                        Text(ride.customerName, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16.sp)),
+                                        Text(
+                                          ride.customerName,
+                                          style: GoogleFonts.cairo(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16.sp,
+                                          ),
+                                        ),
                                         const Divider(),
                                         Row(
                                           children: [
-                                            Icon(Icons.my_location, size: 16.w, color: Colors.green),
+                                            Icon(
+                                              Icons.my_location,
+                                              size: 16.w,
+                                              color: Colors.green,
+                                            ),
                                             SizedBox(width: 4.w),
-                                            Expanded(child: Text(ride.pickupAddress, style: GoogleFonts.cairo(fontSize: 12.sp), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                            Expanded(
+                                              child: Text(
+                                                ride.pickupAddress,
+                                                style: GoogleFonts.cairo(
+                                                  fontSize: 12.sp,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                         SizedBox(height: 4.h),
                                         Row(
                                           children: [
-                                            Icon(Icons.location_on, size: 16.w, color: Colors.red),
+                                            Icon(
+                                              Icons.location_on,
+                                              size: 16.w,
+                                              color: Colors.red,
+                                            ),
                                             SizedBox(width: 4.w),
-                                            Expanded(child: Text(ride.destinationAddress, style: GoogleFonts.cairo(fontSize: 12.sp), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                            Expanded(
+                                              child: Text(
+                                                ride.destinationAddress,
+                                                style: GoogleFonts.cairo(
+                                                  fontSize: 12.sp,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
                                           ],
                                         ),
                                       ],
                                     ),
                                   ),
-                                );
+                                )
+                                    .animate(delay: (index < 8 ? index * 80 : 0).ms)
+                                    .fadeIn(duration: 300.ms)
+                                    .slideY(begin: 0.2, duration: 300.ms);
                               },
                             ),
                     ),
@@ -133,16 +227,34 @@ class RideHistoryView extends StatelessWidget {
           child: Icon(icon, color: AppTheme.deepBurgundy),
         ),
         SizedBox(height: 8.h),
-        Text(value, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16.sp)),
-        Text(label, style: GoogleFonts.cairo(color: AppTheme.darkGrey, fontSize: 12.sp)),
+        Text(
+          value,
+          style: GoogleFonts.cairo(
+            fontWeight: FontWeight.bold,
+            fontSize: 16.sp,
+          ),
+        ),
+        Text(
+          label,
+          style: GoogleFonts.cairo(color: AppTheme.darkGrey, fontSize: 12.sp),
+        ),
       ],
     );
   }
 
-  Widget _buildFilterChip(BuildContext context, String label, String currentFilter) {
+  Widget _buildFilterChip(
+    BuildContext context,
+    String label,
+    String currentFilter,
+  ) {
     final isSelected = label == currentFilter;
     return ChoiceChip(
-      label: Text(label, style: GoogleFonts.cairo(color: isSelected ? AppTheme.pureWhite : AppTheme.charcoalBlack)),
+      label: Text(
+        label,
+        style: GoogleFonts.cairo(
+          color: isSelected ? AppTheme.pureWhite : AppTheme.charcoalBlack,
+        ),
+      ),
       selected: isSelected,
       selectedColor: AppTheme.deepBurgundy,
       backgroundColor: AppTheme.lightGrey,

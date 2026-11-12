@@ -1,9 +1,8 @@
-// lib/features/driver_auth/cubit/driver_auth_cubit.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import '../../../repositories/auth_repository.dart';
-import '../../../repositories/driver_repository.dart';
-import '../../../models/driver_model.dart';
+import '../domain/entities/driver_entity.dart';
+import '../domain/usecases/login_driver_use_case.dart';
+import '../domain/usecases/register_driver_use_case.dart';
 
 // States
 abstract class DriverAuthState extends Equatable {
@@ -13,13 +12,16 @@ abstract class DriverAuthState extends Equatable {
 }
 
 class DriverAuthInitial extends DriverAuthState {}
+
 class DriverAuthLoading extends DriverAuthState {}
+
 class DriverAuthenticated extends DriverAuthState {
-  final DriverModel driver;
+  final DriverEntity driver;
   const DriverAuthenticated(this.driver);
   @override
   List<Object?> get props => [driver];
 }
+
 class DriverAuthError extends DriverAuthState {
   final String message;
   const DriverAuthError(this.message);
@@ -27,31 +29,27 @@ class DriverAuthError extends DriverAuthState {
   List<Object?> get props => [message];
 }
 
-// Cubit
+// Cubit — يستخدم Use Cases فقط
 class DriverAuthCubit extends Cubit<DriverAuthState> {
-  final AuthRepository _authRepository;
-  final DriverRepository _driverRepository;
+  final LoginDriverUseCase _loginDriver;
+  final RegisterDriverUseCase _registerDriver;
 
-  DriverAuthCubit(this._authRepository, this._driverRepository) : super(DriverAuthInitial());
+  DriverAuthCubit({
+    required LoginDriverUseCase loginDriver,
+    required RegisterDriverUseCase registerDriver,
+  })  : _loginDriver = loginDriver,
+        _registerDriver = registerDriver,
+        super(DriverAuthInitial());
 
   Future<void> login(String email, String password) async {
     emit(DriverAuthLoading());
     try {
-      final credential = await _authRepository.signInWithEmail(email: email, password: password);
-      final driverData = await _driverRepository.getDriverData(credential.user!.uid);
-      
-      if (driverData != null) {
-        emit(DriverAuthenticated(driverData));
-      } else {
-        // هذا الحساب ليس كابتن — نرفض الدخول
-        await _authRepository.signOut();
-        emit(const DriverAuthError('هذا الحساب مسجل كعميل. يرجى استخدام تطبيق العميل'));
-      }
+      final driver = await _loginDriver(email: email, password: password);
+      emit(DriverAuthenticated(driver));
     } catch (e) {
       emit(DriverAuthError(e.toString()));
     }
   }
-
 
   Future<void> register({
     required String email,
@@ -64,24 +62,16 @@ class DriverAuthCubit extends Cubit<DriverAuthState> {
   }) async {
     emit(DriverAuthLoading());
     try {
-      final credential = await _authRepository.registerWithEmail(email: email, password: password);
-      final uid = credential.user!.uid;
-
-      final newDriver = DriverModel(
-        uid: uid,
-        name: name,
+      final driver = await _registerDriver(
         email: email,
+        password: password,
+        name: name,
         phone: phone,
         carModel: carModel,
         carPlate: carPlate,
         pricePerKm: pricePerKm,
-        status: 'offline',
-        rating: 5.0,
-        approvalStatus: 'pending',
       );
-
-      await _driverRepository.saveDriverData(newDriver);
-      emit(DriverAuthenticated(newDriver));
+      emit(DriverAuthenticated(driver));
     } catch (e) {
       emit(DriverAuthError(e.toString()));
     }

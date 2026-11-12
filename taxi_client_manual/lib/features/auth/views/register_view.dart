@@ -4,9 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:taxi_client_manual/features/home/views/home_view.dart';
-import '../../../theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/di/service_locator.dart';
 import '../cubit/client_auth_cubit.dart';
-import '../repositories/client_auth_repository.dart';
 
 class RegisterView extends StatefulWidget {
   const RegisterView({Key? key}) : super(key: key);
@@ -35,14 +35,17 @@ class _RegisterViewState extends State<RegisterView> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => ClientAuthCubit(ClientAuthRepository()),
+      create: (context) => sl<ClientAuthCubit>(),
       child: Scaffold(
         backgroundColor: AppTheme.creamBackground,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: AppTheme.charcoalBlack),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: AppTheme.charcoalBlack,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
         ),
@@ -108,7 +111,10 @@ class _RegisterViewState extends State<RegisterView> {
                         },
                         decoration: const InputDecoration(
                           hintText: 'محمد أحمد',
-                          prefixIcon: Icon(Icons.person_outline, color: AppTheme.darkGrey),
+                          prefixIcon: Icon(
+                            Icons.person_outline,
+                            color: AppTheme.darkGrey,
+                          ),
                         ),
                       ),
                       SizedBox(height: 20.h),
@@ -135,7 +141,10 @@ class _RegisterViewState extends State<RegisterView> {
                         },
                         decoration: const InputDecoration(
                           hintText: 'name@example.com',
-                          prefixIcon: Icon(Icons.email_outlined, color: AppTheme.darkGrey),
+                          prefixIcon: Icon(
+                            Icons.email_outlined,
+                            color: AppTheme.darkGrey,
+                          ),
                         ),
                       ),
                       SizedBox(height: 20.h),
@@ -159,7 +168,10 @@ class _RegisterViewState extends State<RegisterView> {
                         },
                         decoration: const InputDecoration(
                           hintText: '5xxxxxxxx',
-                          prefixIcon: Icon(Icons.phone_outlined, color: AppTheme.darkGrey),
+                          prefixIcon: Icon(
+                            Icons.phone_outlined,
+                            color: AppTheme.darkGrey,
+                          ),
                         ),
                       ),
                       SizedBox(height: 20.h),
@@ -186,10 +198,15 @@ class _RegisterViewState extends State<RegisterView> {
                         },
                         decoration: InputDecoration(
                           hintText: '••••••••',
-                          prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.darkGrey),
+                          prefixIcon: const Icon(
+                            Icons.lock_outline,
+                            color: AppTheme.darkGrey,
+                          ),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
                               color: AppTheme.darkGrey,
                             ),
                             onPressed: () {
@@ -207,15 +224,17 @@ class _RegisterViewState extends State<RegisterView> {
                             : () {
                                 if (_formKey.currentState!.validate()) {
                                   context.read<ClientAuthCubit>().signUp(
-                                        name: _nameController.text.trim(),
-                                        email: _emailController.text.trim(),
-                                        phone: _phoneController.text.trim(),
-                                        password: _passwordController.text.trim(),
-                                      );
+                                    name: _nameController.text.trim(),
+                                    email: _emailController.text.trim(),
+                                    phone: _phoneController.text.trim(),
+                                    password: _passwordController.text.trim(),
+                                  );
                                 }
                               },
                         child: state is ClientAuthLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
                             : const Text('إنشاء الحساب'),
                       ),
                       SizedBox(height: 20.h),

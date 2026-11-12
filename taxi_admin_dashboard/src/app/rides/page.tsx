@@ -1,15 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { collection, onSnapshot, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { formatDate, formatCurrency, formatDistance } from '@/lib/utils';
-import { RIDE_STATUS_LABELS, type RideStatus, type Ride } from '@/lib/types';
-import Link from 'next/link';
+import { RIDE_STATUS_LABELS, type RideStatus } from '@/lib/types';
+import { useRides } from '@/features/rides/data/useRides';
 
 const statusVariant: Record<RideStatus, 'default' | 'info' | 'warning' | 'success' | 'destructive'> = {
   pending: 'warning', accepted: 'info', driver_arrived: 'info',
@@ -19,34 +17,9 @@ const statusVariant: Record<RideStatus, 'default' | 'info' | 'warning' | 'succes
 type FilterTab = 'all' | RideStatus;
 
 export default function RidesPage() {
-  const [rides, setRides] = useState<Ride[]>([]);
+  const { rides, loading } = useRides();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterTab>('all');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'rides'), (snap) => {
-      const data = snap.docs.map((d) => {
-        const raw = d.data();
-        return {
-          rideId: d.id, customerId: raw.customerId || '', customerName: raw.customerName || '',
-          customerPhone: raw.customerPhone || '', driverId: raw.driverId || null,
-          driverName: raw.driverName || null, driverPhone: raw.driverPhone || null,
-          driverCarModel: raw.driverCarModel || null, driverCarPlate: raw.driverCarPlate || null,
-          pickupLocation: raw.pickupLocation ? { latitude: raw.pickupLocation.latitude, longitude: raw.pickupLocation.longitude } : { latitude: 0, longitude: 0 },
-          pickupAddress: raw.pickupAddress || '', destinationLocation: raw.destinationLocation ? { latitude: raw.destinationLocation.latitude, longitude: raw.destinationLocation.longitude } : { latitude: 0, longitude: 0 },
-          destinationAddress: raw.destinationAddress || '', status: (raw.status || 'pending') as RideStatus,
-          fare: raw.fare || 0, distanceKm: raw.distanceKm || 0,
-          createdAt: (raw.createdAt as Timestamp)?.toDate() || new Date(),
-          acceptedAt: (raw.acceptedAt as Timestamp)?.toDate() || null,
-          completedAt: (raw.completedAt as Timestamp)?.toDate() || null,
-        };
-      }).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      setRides(data);
-      setLoading(false);
-    });
-    return () => unsub();
-  }, []);
 
   const filtered = rides.filter((r) => {
     const matchesSearch = r.customerName.includes(search) || (r.driverName?.includes(search) ?? false) || r.pickupAddress.includes(search);
@@ -71,7 +44,6 @@ export default function RidesPage() {
         <p className="text-gray-500 mt-1">جميع رحلات النظام في الوقت الفعلي</p>
       </div>
 
-      {/* Filter Tabs */}
       <div className="flex gap-2 flex-wrap">
         {tabs.map((tab) => (
           <button key={tab.key} onClick={() => setFilter(tab.key)}

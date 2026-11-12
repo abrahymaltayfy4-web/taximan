@@ -48,6 +48,8 @@ dependencies:
   flutter_local_notifications: ^19.2.1
   firebase_messaging: ^16.4.3
   intl: ^0.20.2
+  get_it: ^9.2.1
+  flutter_animate: ^4.5.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -58,6 +60,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  bloc_test: ^10.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

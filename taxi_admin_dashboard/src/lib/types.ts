@@ -26,6 +26,8 @@ export interface Driver {
   isBlocked: boolean;
   isDisabled: boolean;
   approvalStatus: ApprovalStatus;
+  totalCommissionOwed: number;
+  totalPaid: number;
   createdAt?: Date;
   lastUpdated?: Date;
 }

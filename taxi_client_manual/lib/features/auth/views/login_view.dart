@@ -4,9 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:taxi_client_manual/features/home/views/home_view.dart';
-import '../../../theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/di/service_locator.dart';
 import '../cubit/client_auth_cubit.dart';
-import '../repositories/client_auth_repository.dart';
 import 'register_view.dart';
 
 class LoginView extends StatefulWidget {
@@ -32,7 +32,7 @@ class _LoginViewState extends State<LoginView> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => ClientAuthCubit(ClientAuthRepository()),
+      create: (context) => sl<ClientAuthCubit>(),
       child: Scaffold(
         backgroundColor: AppTheme.creamBackground,
         body: SafeArea(
@@ -101,7 +101,10 @@ class _LoginViewState extends State<LoginView> {
                         },
                         decoration: const InputDecoration(
                           hintText: 'name@example.com',
-                          prefixIcon: Icon(Icons.email_outlined, color: AppTheme.darkGrey),
+                          prefixIcon: Icon(
+                            Icons.email_outlined,
+                            color: AppTheme.darkGrey,
+                          ),
                         ),
                       ),
                       SizedBox(height: 24.h),
@@ -128,10 +131,15 @@ class _LoginViewState extends State<LoginView> {
                         },
                         decoration: InputDecoration(
                           hintText: '••••••••',
-                          prefixIcon: const Icon(Icons.lock_outline, color: AppTheme.darkGrey),
+                          prefixIcon: const Icon(
+                            Icons.lock_outline,
+                            color: AppTheme.darkGrey,
+                          ),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              _obscurePassword
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
                               color: AppTheme.darkGrey,
                             ),
                             onPressed: () {
@@ -149,13 +157,15 @@ class _LoginViewState extends State<LoginView> {
                             : () {
                                 if (_formKey.currentState!.validate()) {
                                   context.read<ClientAuthCubit>().signIn(
-                                        email: _emailController.text.trim(),
-                                        password: _passwordController.text.trim(),
-                                      );
+                                    email: _emailController.text.trim(),
+                                    password: _passwordController.text.trim(),
+                                  );
                                 }
                               },
                         child: state is ClientAuthLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
                             : const Text('تسجيل الدخول'),
                       ),
                       SizedBox(height: 24.h),
@@ -173,7 +183,9 @@ class _LoginViewState extends State<LoginView> {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const RegisterView()),
+                                MaterialPageRoute(
+                                  builder: (context) => const RegisterView(),
+                                ),
                               );
                             },
                             child: Text(
