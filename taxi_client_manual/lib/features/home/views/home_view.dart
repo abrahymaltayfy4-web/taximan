@@ -13,6 +13,9 @@ import '../../rides/domain/location_entity.dart';
 import '../../rides/presentation/views/ride_tracking_view.dart';
 import '../../ride_history/views/ride_history_view.dart';
 import '../../profile/views/customer_profile_view.dart';
+import '../../place_search/domain/entities/place_details.dart';
+import '../../place_search/presentation/cubit/place_search_cubit.dart';
+import '../../place_search/presentation/views/place_search_view.dart';
 import '../cubit/home_cubit.dart';
 import '../cubit/home_state.dart';
 import '../cubit/location_cubit.dart';
@@ -135,7 +138,7 @@ class _HomeViewState extends State<HomeView> {
           ),
         );
 
-        // الانتقال لاختيار الوجهة
+        // الانتقال لاختيار الوجهة*
         _isSelectingPickup = false;
         _isSelectingDestination = true;
       } else {
@@ -183,6 +186,89 @@ class _HomeViewState extends State<HomeView> {
             pickup: _pickupPosition!,
             destination: _destinationPosition!,
           );
+    }
+  }
+
+  /// فتح شاشة البحث عن الأماكن
+  /// [fieldType] — نوع الحقل: 'pickup' أو 'destination'
+  Future<void> _openPlaceSearch(
+    BuildContext ctx,
+    String fieldType,
+  ) async {
+    final PlaceDetails? result = await Navigator.push<PlaceDetails>(
+      ctx,
+      MaterialPageRoute(
+        builder: (_) => BlocProvider(
+          create: (_) {
+            final cubit = sl<PlaceSearchCubit>();
+            // تحسين نتائج البحث بالموقع الحالي
+            if (_currentPosition != null) {
+              cubit.setCurrentLocation(
+                _currentPosition!.latitude,
+                _currentPosition!.longitude,
+              );
+            }
+            return cubit;
+          },
+          child: PlaceSearchView(fieldType: fieldType),
+        ),
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    final selectedLatLng = LatLng(result.latitude, result.longitude);
+
+    setState(() {
+      if (fieldType == 'pickup') {
+        _pickupPosition = selectedLatLng;
+        _pickupController.text = result.name;
+        _markers.removeWhere((m) => m.markerId.value == 'pickup');
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('pickup'),
+            position: selectedLatLng,
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueGreen,
+            ),
+            infoWindow: InfoWindow(title: result.name),
+          ),
+        );
+        _isSelectingPickup = false;
+        _isSelectingDestination = true;
+      } else {
+        _destinationPosition = selectedLatLng;
+        _destinationController.text = result.name;
+        _markers.removeWhere((m) => m.markerId.value == 'destination');
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('destination'),
+            position: selectedLatLng,
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueRed,
+            ),
+            infoWindow: InfoWindow(title: result.name),
+          ),
+        );
+        _isSelectingDestination = false;
+      }
+    });
+
+    // تحريك الكاميرا للموقع المحدد
+    _mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: selectedLatLng, zoom: 16.0),
+      ),
+    );
+
+    // حساب المسار إذا تم تحديد كلا النقطتين
+    if (_pickupPosition != null && _destinationPosition != null && mounted) {
+      if (ctx.mounted) {
+        ctx.read<HomeCubit>().calculateRoute(
+              pickup: _pickupPosition!,
+              destination: _destinationPosition!,
+            );
+      }
     }
   }
 
@@ -414,14 +500,18 @@ class _HomeViewState extends State<HomeView> {
               size: 20.sp,
             ),
             SizedBox(width: 8.w),
-            Text(
-              _isSelectingPickup
-                  ? 'اضغط على الخريطة لتحديد نقطة البداية'
-                  : 'اضغط على الخريطة لتحديد الوجهة',
-              style: GoogleFonts.cairo(
-                color: Colors.white,
-                fontSize: 13.sp,
-                fontWeight: FontWeight.bold,
+            Flexible(
+              child: Text(
+                _isSelectingPickup
+                    ? 'اضغط على الخريطة لتحديد نقطة البداية'
+                    : 'اضغط على الخريطة لتحديد الوجهة',
+                style: GoogleFonts.cairo(
+                  color: Colors.white,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ),
           ],
@@ -488,6 +578,8 @@ class _HomeViewState extends State<HomeView> {
                 fontWeight: FontWeight.bold,
                 color: AppTheme.deepBurgundy,
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
           Container(
@@ -610,19 +702,26 @@ class _HomeViewState extends State<HomeView> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'المسافة والوقت المقدر:',
-                    style: GoogleFonts.cairo(
-                      fontSize: 14.sp,
-                      color: AppTheme.darkGrey,
+                  Flexible(
+                    child: Text(
+                      'المسافة والوقت المقدر:',
+                      style: GoogleFonts.cairo(
+                        fontSize: 14.sp,
+                        color: AppTheme.darkGrey,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Text(
-                    '${_calculatedDistanceInKm!.toStringAsFixed(2)} كم ($_durationText)',
-                    style: GoogleFonts.cairo(
-                      fontSize: 15.sp,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.deepBurgundy,
+                  SizedBox(width: 8.w),
+                  Flexible(
+                    child: Text(
+                      '${_calculatedDistanceInKm!.toStringAsFixed(2)} كم ($_durationText)',
+                      style: GoogleFonts.cairo(
+                        fontSize: 15.sp,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.deepBurgundy,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
@@ -639,93 +738,174 @@ class _HomeViewState extends State<HomeView> {
   }
 
   Widget _buildPickupField(BuildContext ctx) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _isSelectingPickup = true;
-          _isSelectingDestination = false;
-        });
-      },
-      child: AbsorbPointer(
-        child: TextField(
-          controller: _pickupController,
-          readOnly: true,
-          decoration: InputDecoration(
-            labelText: 'نقطة الانطلاق (اضغط للتغيير)',
-            prefixIcon: const Icon(
-              Icons.my_location,
-              color: Colors.green,
-            ),
-            suffixIcon: _pickupPosition != _currentPosition
-                ? IconButton(
-                    icon: const Icon(
-                      Icons.gps_fixed,
-                      color: AppTheme.deepBurgundy,
-                      size: 20,
+    return Row(
+      children: [
+        // حقل نقطة الانطلاق — الضغط يفعّل وضع اختيار الخريطة
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _isSelectingPickup = true;
+                _isSelectingDestination = false;
+              });
+            },
+            child: AbsorbPointer(
+              child: TextField(
+                controller: _pickupController,
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: 'نقطة الانطلاق',
+                  prefixIcon: const Icon(
+                    Icons.my_location,
+                    color: Colors.green,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(
+                      color: _isSelectingPickup
+                          ? Colors.green
+                          : AppTheme.lightGrey,
+                      width: _isSelectingPickup ? 2 : 1,
                     ),
-                    onPressed: () => _useCurrentLocationAsPickup(ctx),
-                  )
-                : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
-              borderSide: BorderSide(
-                color: _isSelectingPickup
-                    ? Colors.green
-                    : AppTheme.lightGrey,
-                width: _isSelectingPickup ? 2 : 1,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(
+                      color: _isSelectingPickup
+                          ? Colors.green
+                          : AppTheme.lightGrey,
+                      width: _isSelectingPickup ? 2 : 1,
+                    ),
+                  ),
+                ),
               ),
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
-              borderSide: BorderSide(
-                color: _isSelectingPickup
-                    ? Colors.green
-                    : AppTheme.lightGrey,
-                width: _isSelectingPickup ? 2 : 1,
+          ),
+        ),
+        SizedBox(width: 8.w),
+
+        // زر البحث
+        _buildSearchIconButton(
+          onTap: () => _openPlaceSearch(ctx, 'pickup'),
+          tooltip: 'بحث عن نقطة الانطلاق',
+        ),
+
+        // زر الموقع الحالي
+        if (_pickupPosition != _currentPosition) ...[
+          SizedBox(width: 6.w),
+          _buildActionIconButton(
+            icon: Icons.gps_fixed,
+            onTap: () => _useCurrentLocationAsPickup(ctx),
+            tooltip: 'استخدام موقعي الحالي',
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDestinationField() {
+    return Row(
+      children: [
+        // حقل الوجهة — الضغط يفعّل وضع اختيار الخريطة
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _isSelectingPickup = false;
+                _isSelectingDestination = true;
+              });
+            },
+            child: AbsorbPointer(
+              child: TextField(
+                controller: _destinationController,
+                readOnly: true,
+                decoration: InputDecoration(
+                  labelText: 'وجهة الوصول (الخريطة أو ابحث)',
+                  prefixIcon: const Icon(
+                    Icons.location_on,
+                    color: Colors.red,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(
+                      color: _isSelectingDestination
+                          ? AppTheme.deepBurgundy
+                          : AppTheme.lightGrey,
+                      width: _isSelectingDestination ? 2 : 1,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                    borderSide: BorderSide(
+                      color: _isSelectingDestination
+                          ? AppTheme.deepBurgundy
+                          : AppTheme.lightGrey,
+                      width: _isSelectingDestination ? 2 : 1,
+                    ),
+                  ),
+                ),
               ),
             ),
+          ),
+        ),
+        SizedBox(width: 8.w),
+
+        // زر البحث
+        _buildSearchIconButton(
+          onTap: () => _openPlaceSearch(context, 'destination'),
+          tooltip: 'بحث عن الوجهة',
+        ),
+      ],
+    );
+  }
+
+  /// زر البحث المشترك — أيقونة بحث داخل مربع مدور
+  Widget _buildSearchIconButton({
+    required VoidCallback onTap,
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 44.w,
+          height: 44.w,
+          decoration: BoxDecoration(
+            color: AppTheme.deepBurgundy.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          child: Icon(
+            Icons.search_rounded,
+            color: AppTheme.deepBurgundy,
+            size: 22.sp,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDestinationField() {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _isSelectingPickup = false;
-          _isSelectingDestination = true;
-        });
-      },
-      child: AbsorbPointer(
-        child: TextField(
-          controller: _destinationController,
-          readOnly: true,
-          decoration: InputDecoration(
-            labelText: 'وجهة الوصول (اضغط على الخريطة)',
-            prefixIcon: const Icon(
-              Icons.location_on,
-              color: Colors.red,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
-              borderSide: BorderSide(
-                color: _isSelectingDestination
-                    ? AppTheme.deepBurgundy
-                    : AppTheme.lightGrey,
-                width: _isSelectingDestination ? 2 : 1,
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
-              borderSide: BorderSide(
-                color: _isSelectingDestination
-                    ? AppTheme.deepBurgundy
-                    : AppTheme.lightGrey,
-                width: _isSelectingDestination ? 2 : 1,
-              ),
-            ),
+  /// زر إجراء عام — أيقونة صغيرة
+  Widget _buildActionIconButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 44.w,
+          height: 44.w,
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          child: Icon(
+            icon,
+            color: Colors.green.shade700,
+            size: 20.sp,
           ),
         ),
       ),

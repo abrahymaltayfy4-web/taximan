@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/di/service_locator.dart';
+import '../../driver_auth/cubit/driver_auth_cubit.dart';
 import '../../driver_auth/views/driver_login_view.dart';
 import '../../driver_home/views/driver_home_view.dart';
 import '../cubit/splash_cubit.dart';
@@ -78,7 +80,12 @@ class _SplashViewState extends State<SplashView>
 
   void _navigateToLogin({String? message}) {
     Navigator.of(context).pushReplacement(
-      _buildFadeRoute(const DriverLoginView()),
+      _buildFadeRoute(
+        BlocProvider(
+          create: (_) => sl<DriverAuthCubit>(),
+          child: const DriverLoginView(),
+        ),
+      ),
     );
 
     if (message != null) {

@@ -55,6 +55,18 @@ class WasslniCustomerApp extends StatelessWidget {
           title: 'Wasslni',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
+          builder: (context, widget) {
+            // تحديد حد أقصى لحجم الخط لتجنب overflow على أجهزة أخرى
+            final mediaQueryData = MediaQuery.of(context);
+            final constrainedTextScaler = mediaQueryData.textScaler.clamp(
+              minScaleFactor: 0.8,
+              maxScaleFactor: 1.1,
+            );
+            return MediaQuery(
+              data: mediaQueryData.copyWith(textScaler: constrainedTextScaler),
+              child: widget!,
+            );
+          },
           home: BlocProvider(
             create: (_) => sl<ClientSplashCubit>(),
             child: const ClientSplashView(),

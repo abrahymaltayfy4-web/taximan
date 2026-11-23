@@ -52,6 +52,15 @@ import '../../features/ride_history/domain/repositories/client_ride_history_repo
 import '../../features/ride_history/domain/usecases/load_client_ride_history_use_case.dart';
 import '../../features/ride_history/cubit/ride_history_cubit.dart';
 
+// Place Search feature (Clean Architecture)
+import '../../features/place_search/data/datasources/places_remote_data_source.dart';
+import '../../features/place_search/data/repositories/place_search_repository_impl.dart';
+import '../../features/place_search/domain/repositories/place_search_repository.dart';
+import '../../features/place_search/domain/usecases/search_places_use_case.dart';
+import '../../features/place_search/domain/usecases/get_place_details_use_case.dart';
+import '../../features/place_search/presentation/cubit/place_search_cubit.dart';
+import '../config/app_config.dart';
+
 final sl = GetIt.instance;
 
 /// تهيئة جميع الاعتماديات — يُستدعى مرة واحدة في main()
@@ -183,6 +192,29 @@ Future<void> initDependencies() async {
   sl.registerFactory<LocationCubit>(() => LocationCubit());
   sl.registerFactory<HomeCubit>(
     () => HomeCubit(sl<FirebaseFirestore>(), sl<DirectionsService>()),
+  );
+
+  // ═══════════════════════════════════════════
+  // Place Search Feature (Clean Architecture)
+  // DataSource → Repo(implements Contract) → UseCases → Cubit
+  // ═══════════════════════════════════════════
+  sl.registerLazySingleton<PlacesRemoteDataSource>(
+    () => PlacesRemoteDataSource(apiKey: AppConfig.mapsApiKey),
+  );
+  sl.registerLazySingleton<PlaceSearchRepository>(
+    () => PlaceSearchRepositoryImpl(sl<PlacesRemoteDataSource>()),
+  );
+  sl.registerLazySingleton(
+    () => SearchPlacesUseCase(sl<PlaceSearchRepository>()),
+  );
+  sl.registerLazySingleton(
+    () => GetPlaceDetailsUseCase(sl<PlaceSearchRepository>()),
+  );
+  sl.registerFactory<PlaceSearchCubit>(
+    () => PlaceSearchCubit(
+      searchPlaces: sl<SearchPlacesUseCase>(),
+      getPlaceDetails: sl<GetPlaceDetailsUseCase>(),
+    ),
   );
 
   // ═══════════════════════════════════════════
